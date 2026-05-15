@@ -1,0 +1,38 @@
+# --- IDE / редакторы ---
+.vs/
+.idea/
+.vscode/
+
+# --- Сборочные каталоги CMake ---
+build/
+build-*/
+out/
+cmake-build-*/
+
+# Локальные пресеты CMake (часто содержат абсолютные пути к vcpkg)
+CMakeUserPresets.json
+
+# --- Бэкапы старых MinGW-зависимостей в репозитории ---
+include/assimp.mingw-backup/
+include/GLFW.mingw-backup/
+
+# --- Артефакты MSVC / линкера, если вдруг попадут вне build/ ---
+*.obj
+!assets/**/*.obj
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.user
+*.tlog
+*.suo
+*.aps
+*.opendb
+*.VC.db
+*.VC.opendb
+
+# --- Системный мусор ---
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store

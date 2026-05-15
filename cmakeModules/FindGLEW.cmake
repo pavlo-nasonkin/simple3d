@@ -1,0 +1,11 @@
+
+find_path(GLEW_INCLUDE_DIR GL/glew.h
+        PATH_SUFFIXES include
+        PATHS ${PROJECT_SOURCE_DIR}/include/)
+message("Running FindGLEW")
+
+
+SET(GLEW_FOUND "NO")
+IF(GLEW_INCLUDE_DIRS)
+    SET(GLEW_FOUND "YES")
+ENDIF(GLEW_INCLUDE_DIRS)
