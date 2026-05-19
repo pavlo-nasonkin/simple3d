@@ -1,4 +1,8 @@
 #include "Engine.h"
+
+#include <iostream>
+#include <ostream>
+
 #include "resources/TextureManager.h"
 
 #ifdef WIN32
@@ -8,6 +12,7 @@
 #endif
 
 TextureManager* Engine::textureManager;
+
 long long Engine::startTime = GetCurrentTimeMillis();
 
 ObjectSelector* Engine::objectSelector = nullptr;
@@ -33,5 +38,9 @@ long long Engine::GetCurrentTimeMillis()
 double Engine::getTimerSec()
 {
    return (float)((double)Engine::GetCurrentTimeMillis() - (double)startTime) / 1000.0f;
+}
+
+void Engine::Log(const std::string &msg) {
+    std::cout << msg << std::endl;
 }
 

@@ -7,16 +7,16 @@
 //Assimp
 #include <assimp/scene.h>
 
-#include "Shader.h"
+#include "../Shader.h"
 #include "Mesh.h"
 #include <SOIL/SOIL2.h>
-#include "resources/Texture2D.h"
-#include "Pivot3D.h"
-#include "materials/MaterialBase.h"
+#include "../resources/Texture2D.h"
+#include "../Pivot3D.h"
+#include "../materials/MaterialBase.h"
 #include <memory>
 #include <map>
-#include "utils/Math3d.h"
-#include "materials/SkinnedMaterial3D.h"
+#include "../utils/Math3d.h"
+#include "../materials/SkinnedMaterial3D.h"
 #include <assimp/Importer.hpp>
 
 struct BoneInfo
@@ -29,9 +29,9 @@ class ExternalModel: public Pivot3D
 {
 public:
 	/*  Functions   */
-    ExternalModel(std::string path);
-    void render(std::shared_ptr<MaterialBase> material) override;
-	~ExternalModel();
+    ExternalModel(const std::string& path);
+    void render(const RenderContext &ctx, MaterialBase* material) override;
+	~ExternalModel() override;
     void init() override;
 
 private:

@@ -3,48 +3,32 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include "resources/Texture2D.h"
-#include "resources/TextureManager.h"
-#include "Engine.h"
+#include "../resources/Texture2D.h"
+#include "../resources/TextureManager.h"
+#include "../Engine.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/glm.hpp>
-#include "materials/ShaderFactory.h"
-#include "materials/ColorMaterial.h"
-#include "materials/filters/TextureMapFilter.h"
-#include "Device3D.h"
-#include "Scene3D.h"
-#include "utils/Math3d.h"
+#include "../materials/ShaderFactory.h"
+#include "../materials/ColorMaterial.h"
+#include "../materials/filters/TextureMapFilter.h"
+#include "../Device3D.h"
+#include "../Scene3D.h"
+#include "../utils/Math3d.h"
 
-ExternalModel::ExternalModel(std::string path):
+ExternalModel::ExternalModel(const std::string& path):
     Pivot3D(),
     _path(path)
 {
     _name = "ExternalModel";
-    _transforms = std::make_shared<std::vector<Matrix4f>>(std::vector<Matrix4f>());
+    _transforms = std::make_shared<std::vector<Matrix4f>>();
 }
 
-void ExternalModel::render(std::shared_ptr<MaterialBase> shader /*= nullptr*/)
+void ExternalModel::render(const RenderContext& ctx, MaterialBase* material /*= nullptr*/)
 {
-//    Pivot3D::render(shader);
-
-    _model = glm::mat4(1.0f);
-
-    _model = glm::scale(_model, _scale);
-
-    _model = glm::rotate(_model, _rotation.x, glm::vec3(1, 0, 0));
-    _model = glm::rotate(_model, _rotation.y, glm::vec3(0, 1, 0));
-    _model = glm::rotate(_model, _rotation.z, glm::vec3(0, 0, 1));
-
-    _model = glm::translate(_model, _position);
-    Device3D::model = glm::value_ptr(_model);
-
-    float RunningTime = Engine::getTimerSec();
-    BoneTransform(RunningTime, _transforms);
-
-    for (auto child : _children)
-    {
-        child->render(shader);
+    if (_scene) {
+        BoneTransform(Engine::getTimerSec(), _transforms);
     }
+    Pivot3D::render(ctx, material);
 }
 
 ExternalModel::~ExternalModel()
@@ -137,14 +121,14 @@ std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * 
     std::shared_ptr<Shader> shader;
     if (hasBones)
     {
-       shader = std::make_shared<Shader>(Shader("../assets/shaders/shader_skin.vs", "../assets/shaders/default.fs"));
-       mat = std::make_shared<SkinnedMaterial3D>(SkinnedMaterial3D(shader));
+       shader = std::make_shared<Shader>("../assets/shaders/shader_skin.vs", "../assets/shaders/default.fs");
+       mat = std::make_shared<SkinnedMaterial3D>(shader);
        auto skinnedMat = std::dynamic_pointer_cast<SkinnedMaterial3D>(mat);
        skinnedMat->transforms = _transforms;
     }
     else {
-        shader = std::make_shared<Shader>(Shader("../assets/shaders/shader.vs", "../assets/shaders/default.fs"));
-        mat = std::make_shared<Material3D>(Material3D(shader));
+        shader = std::make_shared<Shader>("../assets/shaders/shader.vs", "../assets/shaders/shader.fs");
+        mat = std::make_shared<Material3D>(shader);
     }
 
 
@@ -161,7 +145,7 @@ std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * 
 
         for (auto tex : diffuseMaps)
         {
-            auto textureFilter = std::make_shared<TextureMapFilter>(TextureMapFilter(tex));
+            auto textureFilter = std::make_shared<TextureMapFilter>(tex);
             textureFilter->setBlendMode(BlendMode::NORMAL);
             mat->addFilter(textureFilter);
         }
@@ -181,8 +165,7 @@ std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * 
     }
 
     mat->build();
-    Device3D::scene3D->addMaterial(mat);
-    auto m = std::make_shared<Mesh>(Mesh(vertices, indices, mat, bones));
+    auto m = std::make_shared<Mesh>(vertices, indices, mat, bones);
     m->setName(mesh->mName.C_Str());
     return m;
 }
@@ -251,6 +234,9 @@ void ExternalModel::loadBones(unsigned int /*MeshIndex*/, const aiMesh* pMesh, s
 
 void ExternalModel::BoneTransform(float TimeInSeconds, std::shared_ptr<std::vector<Matrix4f>> transforms)
 {
+    if (_scene->mNumAnimations == 0) {
+        return;
+    }
     Matrix4f identity;
     identity.InitIdentity();
 
@@ -271,6 +257,9 @@ void ExternalModel::BoneTransform(float TimeInSeconds, std::shared_ptr<std::vect
 
 void ExternalModel::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, const Matrix4f& ParentTransform)
 {
+    if (_scene->mNumAnimations == 0) {
+        return;
+    }
     std::string NodeName(pNode->mName.data);
 
     const aiAnimation* pAnimation = _scene->mAnimations[0];

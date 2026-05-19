@@ -32,11 +32,6 @@ Camera::Camera(glm::vec3 position /*= glm::vec3(0.0f, 0.0f, 0.0f)*/,
 	this->updateCameraVectors();
 }
 
-Camera::~Camera()
-{
-
-}
-
 glm::mat4 Camera::GetViewMatrix()
 {
 	return glm::lookAt(this->Position, this->Position + this->Front, this->Up);

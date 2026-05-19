@@ -8,8 +8,8 @@ class ObjectIdMaterial: public MaterialBase
 {
 public:
     ObjectIdMaterial(std::shared_ptr<Shader> shader);
-	~ObjectIdMaterial();
-	void bind(const Mesh* mesh = nullptr) override;
+	~ObjectIdMaterial() override;
+	void bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
 protected:
 	
 private:

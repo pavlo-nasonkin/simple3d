@@ -1,6 +1,9 @@
 #pragma once
 #ifndef Engine_h__
 #define Engine_h__
+#include <string>
+
+#include "Scene3D.h"
 
 class TextureManager;
 class ObjectSelector;
@@ -14,6 +17,7 @@ public:
 	Engine();
     static long long GetCurrentTimeMillis();
     static double getTimerSec();
+	static void Log(const std::string& msg);
 protected:
 	
 private:

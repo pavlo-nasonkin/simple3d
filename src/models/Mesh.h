@@ -1,12 +1,11 @@
-#ifndef MESH_H
-#define MESH_H
-// Std. Includes
+#pragma once
+
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <vector>
-#include "GLEWImporter.h"
+#include "../GLEWImporter.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -14,12 +13,12 @@
 //Assimp
 #include <assimp/types.h>
 
-#include "Shader.h"
-#include "resources/Texture2D.h"
-#include "Material3D.h"
-#include "materials/MaterialBase.h"
+#include "../Shader.h"
+#include "../resources/Texture2D.h"
+#include "../materials/Material3D.h"
+#include "../materials/MaterialBase.h"
 #include <memory>
-#include "Pivot3D.h"
+#include "../Pivot3D.h"
 
 
 
@@ -57,8 +56,6 @@ class Mesh: public Pivot3D {
     GLuint elementArrayBuffer{};
     GLuint boneArrayBuffer{};
 
-protected:
-    void applyTransformRotation() override;
 public:
 	/*  Mesh Data  */
     std::vector<Vertex> _vertices;
@@ -71,11 +68,9 @@ public:
     Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::shared_ptr<MaterialBase>& mat, const std::vector<VertexBoneData>& bones);
 	~Mesh() override = default;
 	// Render the mesh
-    void render(std::shared_ptr<MaterialBase> material) override;
+    void render(const RenderContext &ctx, MaterialBase* material) override;
     std::shared_ptr<MaterialBase> material() const;
 
 private:
 	void setupMesh();
 };
-
-#endif//MESH_H

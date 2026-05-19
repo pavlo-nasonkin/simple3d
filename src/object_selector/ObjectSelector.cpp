@@ -12,15 +12,17 @@
 #include "events/IObjectSelectorListener.h"
 #include <memory>
 
+#include "Engine.h"
+#include "camera/Camera.h"
 
 
-ObjectSelector::ObjectSelector()
-    :_selectedObject(nullptr)
+ObjectSelector::ObjectSelector(const std::shared_ptr<Scene3D> &scene, const std::shared_ptr<Camera>& camera)
+    :_selectedObject(nullptr), _scene(scene), _camera(camera)
 {
 	MouseInput::addListener(this, MouseInput::MOUSE_BUTTON);
 
     std::shared_ptr<Shader> colorShade = ShaderFactory::getShader("../assets/shaders/light_source_shader.vs", "../assets/shaders/color.fs");
-    _colorMaterial = std::make_shared<ObjectIdMaterial>(ObjectIdMaterial(colorShade));
+    _colorMaterial = std::make_shared<ObjectIdMaterial>(colorShade);
 }
 
 ObjectSelector::~ObjectSelector()
@@ -51,7 +53,7 @@ void ObjectSelector::handleMouseButton(int button, int action)
 	}
 }
 
-std::shared_ptr<Pivot3D> ObjectSelector::getSelectedObject()
+const std::shared_ptr<Pivot3D>& ObjectSelector::getSelectedObject()
 {
 	return _selectedObject;
 }
@@ -73,8 +75,23 @@ void ObjectSelector::readPixel(void* pixel)
 void ObjectSelector::pickObject()
 {
 	//TODO set render to texture
+
+	auto scene3D = _scene.lock();
+	if (!scene3D) {
+		return;
+	}
+
+	auto camera = _camera.lock();
+	if (!camera) {
+		return;
+	}
+
 	//scene render
-    Device3D::scene3D->render(_colorMaterial);
+	RenderContext ctx;
+	ctx.camera = camera.get();
+	ctx.view = ctx.camera->GetViewMatrix();
+	ctx.projection = ctx.camera->getProjectionMatrix();
+    scene3D->render(ctx, _colorMaterial.get());
 	//get pixel
 	//set render to backbuffer
 	unsigned char pixel[4];
@@ -89,7 +106,7 @@ void ObjectSelector::pickObject()
 	std::cout << std::endl;
 	unsigned int selectedObjectId = (pixel[3] << 24) | (pixel[2] << 16) | (pixel[1] << 8) | (pixel[0]);
 	std::cout << "ObjectId = " << selectedObjectId << std::endl;
-	_selectedObject = Device3D::scene3D->getChildById(selectedObjectId);
+	_selectedObject = scene3D->getChildById(selectedObjectId);
 	fireChange(_selectedObject);
 
 }

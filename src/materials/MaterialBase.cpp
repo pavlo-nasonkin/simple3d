@@ -1,6 +1,6 @@
 #include "MaterialBase.h"
 #include "Shader.h"
-#include "Mesh.h"
+#include "../models/Mesh.h"
 #include "GLEWImporter.h"
 
 
@@ -14,7 +14,7 @@ CullFaceMode MaterialBase::cullFace() const
 
 std::shared_ptr<MaterialBase> MaterialBase::clone() const
 {
-    auto result = std::make_shared<MaterialBase>(MaterialBase(*this));
+    auto result = std::make_shared<MaterialBase>(*this);
     result->setId(_idCounter);
     _idCounter++;
     return result;
@@ -48,7 +48,7 @@ void MaterialBase::build()
 
 }
 
-void MaterialBase::bind(const Mesh* /*mesh = nullptr*/)
+void MaterialBase::bind(const RenderContext& ctx, const Mesh* /*mesh = nullptr*/)
 {
     _shader->use();
     switch (_cullFace)

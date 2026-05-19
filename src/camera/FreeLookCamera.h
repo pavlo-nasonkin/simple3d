@@ -27,7 +27,7 @@ public:
 	FreeLookCamera(GLfloat posX, GLfloat posY, GLfloat posZ,
 		GLfloat upX, GLfloat upY, GLfloat upZ, GLfloat yaw, GLfloat pitch);
 	
-	~FreeLookCamera();
+	~FreeLookCamera() override;
 	glm::mat4 GetViewMatrix() override;
 	void handleMouseButton(int button, int action) override;
 	void handleMouseMove(double xpos, double ypos) override;

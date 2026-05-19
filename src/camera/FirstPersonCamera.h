@@ -65,7 +65,7 @@ public:
 		MouseInput::addListener(this, MouseInput::MOUSE_MOVE);
 	}
 
-	
+	~FirstPersonCamera() override = default;
 
 	// Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
 	void ProcessKeyboard(Camera_Movement direction, GLfloat deltaTime)
@@ -131,7 +131,7 @@ public:
 	}
 
 
-	virtual void handleMouseMove(double xpos, double ypos) override
+	void handleMouseMove(double xpos, double ypos) override
 	{
 		if (_firstMouse)
 		{

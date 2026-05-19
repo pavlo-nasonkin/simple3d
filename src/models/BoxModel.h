@@ -1,13 +1,8 @@
 #pragma once
 
 #include <vector>
-
 #include "Mesh.h"
-#include <glm/glm.hpp>
 #include <GL/glew.h>
-#include <string>
-#include <assimp/scene.h>
-#include "resources/Texture2D.h"
 #include "Model.h"
 
 class Material3D;
@@ -21,11 +16,15 @@ private:
 	
 	static std::vector<Vertex> boxVertices;
 	static std::vector<GLuint> boxIndices;
+
+	unsigned int _color = 0x888888ff;
 public:
 	BoxModel();
 	~BoxModel() override;
     void init() override;
     std::shared_ptr<Mesh> processMesh();
+
+	void SetColor(unsigned int color) { _color = color; }
 private:
 };
 

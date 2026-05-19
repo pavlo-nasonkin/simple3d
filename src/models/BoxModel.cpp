@@ -2,14 +2,14 @@
 
 #include <GL/glew.h>
 #include <glm/gtc/type_ptr.hpp>
-#include "Engine.h"
-#include "resources/TextureManager.h"
+#include "../Engine.h"
+#include "../resources/TextureManager.h"
 #include <string>
-#include "materials/ShaderFactory.h"
-#include "Device3D.h"
-#include "Material3D.h"
-#include "materials/ColorMaterial.h"
-#include "materials/filters/ColorFilter.h"
+#include "../materials/ShaderFactory.h"
+#include "../Device3D.h"
+#include "../materials/Material3D.h"
+#include "../materials/ColorMaterial.h"
+#include "../materials/filters/ColorFilter.h"
 
 BoxModel::BoxModel():
     Model()
@@ -27,15 +27,14 @@ void BoxModel::init()
 
 std::shared_ptr<Mesh> BoxModel::processMesh()
 {
-    auto mat = std::make_shared<Material3D>(Material3D(ShaderFactory::getShader("../assets/shaders/shader.vs",
-                                                          "../assets/shaders/defaultColorLight.fs")));
+    auto mat = std::make_shared<Material3D>(ShaderFactory::getShader("../assets/shaders/shader.vs",
+                                                          "../assets/shaders/defaultColorLight.fs"));
 
-    auto colorFilter = std::make_shared<ColorFilter>(ColorFilter());
-    colorFilter->setColor(0x88888800);
+    auto colorFilter = std::make_shared<ColorFilter>();
+    colorFilter->setColor(_color);
     colorFilter->setBlendMode(BlendMode::ADD);
     mat->addFilter(colorFilter);
     mat->build();
-    Device3D::scene3D->addMaterial(mat);
     auto mesh = std::make_shared<Mesh>(boxVertices, boxIndices, mat, std::vector<VertexBoneData>());
     mesh->setName(std::string("Box") + std::to_string(mesh->getId()));
     return mesh;

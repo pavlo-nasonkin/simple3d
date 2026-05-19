@@ -1,13 +1,13 @@
 #include "Mesh.h"
-#include "materials/MaterialBase.h"
-#include "Pivot3D.h"
-#include "Device3D.h"
+#include "../materials/MaterialBase.h"
+#include "../Pivot3D.h"
+#include "../Device3D.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "GLUtils.h"
-#include "utils/Math3d.h"
+#include "../GLUtils.h"
+#include "../utils/Math3d.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include "utils/Math3d.h"
+#include "../utils/Math3d.h"
 
 //unsigned int Mesh::_idCounter = 0;
 
@@ -26,21 +26,23 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indic
 
 // Render the mesh
 
-void Mesh::render(std::shared_ptr<MaterialBase> material)
+void Mesh::render(const RenderContext &ctx, MaterialBase* material)
 {
-    Pivot3D::render(material);
+    RenderContext context =  ctx;
+    context.model = ctx.model * LocalMatrix();
+    if (material == nullptr) {
+        material = _material.get();
+    }
 
-	if (material == nullptr) {
-		material = _material;
-	}
-    material->bind(this);
-
-	// Draw mesh
+    material->bind(context, this);
     glBindVertexArray(vertexAttributesArray);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(_indices.size()), GL_UNSIGNED_INT, 0);
-	glBindVertexArray(0);
+    glBindVertexArray(0);
+    material->unbind();
 
-	material->unbind();
+    for (auto& child : _children) {
+        child->render(context, material);
+    }
 }
 
 /*  Functions    */
@@ -100,14 +102,6 @@ void Mesh::setupMesh()
 
     }
     glBindVertexArray(0);
-}
-
-void Mesh::applyTransformRotation()
-{
-    _model = glm::rotate(_model, _rotation.x - static_cast<float>(M_PI * 0.5), glm::vec3(1, 0, 0));
-//    _model = glm::rotate(_model, _rotation.x, glm::vec3(1, 0, 0));
-    _model = glm::rotate(_model, _rotation.y, glm::vec3(0, 1, 0));
-    _model = glm::rotate(_model, _rotation.z, glm::vec3(0, 0, 1));
 }
 
 std::shared_ptr<MaterialBase> Mesh::material() const

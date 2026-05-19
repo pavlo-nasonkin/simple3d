@@ -9,19 +9,14 @@ TextureManager::~TextureManager()
 {
 }
 
-std::shared_ptr<Texture2D> TextureManager::loadTexture(std::string /*name*/)
-{
-	return nullptr;
-}
-
-std::shared_ptr<Texture2D> TextureManager::getTexture(std::string texturePath, std::string typeName, std::string directory)
+std::shared_ptr<Texture2D> TextureManager::getTexture(const std::string& texturePath, const std::string& typeName, const std::string& directory)
 {
     auto mapIterator = _textures.find(texturePath);
 	if (mapIterator != _textures.end()) {
 		return mapIterator->second;
 	}
 
-    std::shared_ptr<Texture2D> texture = std::make_shared<Texture2D>(Texture2D());
+    std::shared_ptr<Texture2D> texture = std::make_shared<Texture2D>();
 
     texture->id = TextureManager::TextureFromFile(texturePath, directory);
 	texture->type = typeName;

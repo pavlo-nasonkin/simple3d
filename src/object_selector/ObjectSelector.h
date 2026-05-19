@@ -15,15 +15,16 @@ private:
 	std::shared_ptr<ObjectIdMaterial> _colorMaterial;
     std::shared_ptr<Pivot3D> _selectedObject;
 	std::vector<IObjectSelectorListener*> _objectSelectListeners;
-	
+	std::weak_ptr<Scene3D> _scene;
+	std::weak_ptr<Camera> _camera;
 public:
-	ObjectSelector();
+	ObjectSelector(const std::shared_ptr<Scene3D>& scene, const std::shared_ptr<Camera>& camera);
 	virtual ~ObjectSelector();
 	void addSelectListener(IObjectSelectorListener* listener);
 	void removeSelectListener(IObjectSelectorListener* listener);
 
 	void handleMouseButton(int button, int action) override;
-    std::shared_ptr<Pivot3D> getSelectedObject();
+    const std::shared_ptr<Pivot3D>& getSelectedObject();
     void setSelectedObject(std::shared_ptr<Pivot3D> val);
 protected:
 	virtual void readPixel(void* pixel);

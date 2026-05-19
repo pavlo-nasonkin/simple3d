@@ -9,9 +9,9 @@ public:
     std::shared_ptr<std::vector<Matrix4f>> transforms;
 public:
     SkinnedMaterial3D(std::shared_ptr<Shader> shader);
-    ~SkinnedMaterial3D();
+    ~SkinnedMaterial3D() override;
     void SetBoneTransform(unsigned int Index, const Matrix4f& Transform);
-    void bind(const Mesh* mesh = nullptr) override;
+    void bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
     std::shared_ptr<MaterialBase> clone() const override;
 };
 

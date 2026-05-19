@@ -8,8 +8,8 @@ class ColorMaterial: public MaterialBase
 {
 public:
     ColorMaterial(std::shared_ptr<Shader> shader);
-	~ColorMaterial();
-	void bind(const Mesh* mesh = nullptr) override;
+	~ColorMaterial() override;
+	void bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
 protected:
 	
 private:

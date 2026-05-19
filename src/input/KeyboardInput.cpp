@@ -2,7 +2,7 @@
 #include "events/IKeyboardListener.h"
 #include <algorithm>
 
-bool KeyboardInput::_keys[];
+std::vector<bool> KeyboardInput::_keys = std::vector<bool>(1024, false);
 std::vector<IKeyboardListener*> KeyboardInput::_listeners;
 
 KeyboardInput::KeyboardInput()

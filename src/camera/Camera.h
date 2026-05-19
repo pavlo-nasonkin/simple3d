@@ -6,8 +6,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-
-
 class Camera
 {
 public:
@@ -31,12 +29,12 @@ private:
 public:
 	Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), GLfloat yaw = YAW, GLfloat pitch = PITCH);
 	Camera(GLfloat posX, GLfloat posY, GLfloat posZ, GLfloat upX, GLfloat upY, GLfloat upZ, GLfloat yaw, GLfloat pitch);
-	~Camera();
+	virtual ~Camera() = default;
 	// Returns the view matrix calculated using Euler Angles and the LookAt Matrix
 	virtual glm::mat4 GetViewMatrix();
 	virtual void buildProjectionMatrix(float screenW, float screenH, float fow, float near, float far);
 
-	const GLfloat* getProjectionMatrix() { return glm::value_ptr(_projectionMatrix);  };
+	const glm::mat4& getProjectionMatrix() const { return _projectionMatrix; };
 protected:
 	// Calculates the front vector from the Camera's (updated) Euler Angles
 	void updateCameraVectors();

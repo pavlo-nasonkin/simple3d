@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include "events/EventDispatcher.h"
 #include <memory>
+#include "render/RenderContext.h"
 class Shader;
 class Mesh;
 class Material3D;
@@ -23,7 +24,6 @@ class Pivot3D: public EventDispatcher, public std::enable_shared_from_this<Pivot
 {
 protected:
 	static unsigned int _idCounter;
-    glm::mat4 _model;
     pivots_list _children;
     std::weak_ptr<Pivot3D> _parent;
 
@@ -42,7 +42,7 @@ public:
 	void removeChildren();
     const pivots_list& children();
 //    std::vector<Mesh*>& meshes();
-    virtual void render(std::shared_ptr<MaterialBase> shader = nullptr);
+    virtual void render(const RenderContext &ctx, MaterialBase* material = nullptr);
 	void setPosition(float x, float y, float z);
 	void setRotation(float x, float y, float z);
 	void setScale(float x, float y, float z);
@@ -51,7 +51,7 @@ public:
 	const glm::vec3* getScale() const { return &_scale; }
 
 	void translate(float x, float y, float z);
-	void rotate(float angle, float x, float y, float z);
+	void rotate(float x, float y, float z);
 	void scale(float x, float y, float z);
 	
     std::shared_ptr<Pivot3D> getChildById(unsigned int id, bool recursive = true);
@@ -64,8 +64,7 @@ public:
     void setName(const std::string &name);
 
 protected:
-    virtual void applyTransformRotation();
-	
+	glm::mat4 LocalMatrix() const;
 };
 
 #endif // !PIVOT_3D_H

@@ -1,4 +1,6 @@
 #include "Shader.h"
+
+#include "Engine.h"
 #include "GLUtils.h"
 
 void Shader::setOriginalVertexSource(const std::string &originalVertexSource)
@@ -38,9 +40,9 @@ Shader::Shader(const GLchar * vertexPath, const GLchar * fragmentPath)
         _originalVertexSource = _vertexSource;
         _originalFragmentSource = _fragmentSource;
 	}
-	catch (std::ifstream::failure e)
+	catch (const std::ifstream::failure& e)
 	{
-		std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+	    Engine::Log("Shader file not successfully read: " + std::string(e.what()) + " vertexPath: " + vertexPath + " fragmentPath: " + fragmentPath);
 	}
 
     build();

@@ -2,8 +2,9 @@
 #include "GLEWImporter.h"
 #include "Shader.h"
 #include "Device3D.h"
-#include "Mesh.h"
+#include "../models/Mesh.h"
 #include "Pivot3D.h"
+#include "glm/gtc/type_ptr.hpp"
 
 ObjectIdMaterial::ObjectIdMaterial(std::shared_ptr<Shader> shader)
 	:MaterialBase(shader)
@@ -15,9 +16,9 @@ ObjectIdMaterial::~ObjectIdMaterial()
 
 }
 
-void ObjectIdMaterial::bind(const Mesh* mesh/*=nullptr*/)
+void ObjectIdMaterial::bind(const RenderContext& ctx, const Mesh* mesh/*=nullptr*/)
 {
-	MaterialBase::bind(mesh);
+	MaterialBase::bind(ctx, mesh);
 
 	
 
@@ -25,9 +26,9 @@ void ObjectIdMaterial::bind(const Mesh* mesh/*=nullptr*/)
 	GLint viewLoc = glGetUniformLocation(_shader->Program, "view");
 	GLint projectionLoc = glGetUniformLocation(_shader->Program, "projection");
 
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, Device3D::model);
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, Device3D::view);
-	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, Device3D::projection);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(ctx.model));
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(ctx.view));
+	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(ctx.projection));
 
 	//Bind id
 	GLint colorLoc = glGetUniformLocation(_shader->Program, "uColor");

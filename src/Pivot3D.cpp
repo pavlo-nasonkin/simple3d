@@ -23,9 +23,6 @@ Pivot3D::Pivot3D(): _scale(1.0f,1.0f,1.0f),
 
 Pivot3D::~Pivot3D()
 {
-    if (!_parent.expired()) {
-        _parent.lock()->removeChild(shared_from_this());
-	}
     _parent.reset();
     removeChildren();
 }
@@ -33,6 +30,16 @@ Pivot3D::~Pivot3D()
 void Pivot3D::init()
 {
 
+}
+
+glm::mat4 Pivot3D::LocalMatrix() const {
+	glm::mat4 m(1.0f);
+	m = glm::translate(m, _position);
+	m = glm::rotate(m, _rotation.x, glm::vec3(1,0,0));
+	m = glm::rotate(m, _rotation.y, glm::vec3(0,1,0));
+	m = glm::rotate(m, _rotation.z, glm::vec3(0,0,1));
+	m = glm::scale(m, _scale);
+	return m;
 }
 
 void Pivot3D::addChild(std::shared_ptr<Pivot3D> child)
@@ -75,20 +82,14 @@ const pivots_list& Pivot3D::children()
     return _children;
 }
 
-void Pivot3D::render(std::shared_ptr<MaterialBase> shader /*= nullptr*/)
+void Pivot3D::render(const RenderContext &ctx, MaterialBase* material /*= nullptr*/)
 {
-    _model = glm::mat4(1.0f);
+	RenderContext context = ctx;
 
-    _model = glm::scale(_model, _scale);
-
-    applyTransformRotation();
-
-    _model = glm::translate(_model, _position);
-    Device3D::model = glm::value_ptr(_model);
-
+	context.model = ctx.model * LocalMatrix();
     for (auto child : _children)
     {
-        child->render(shader);
+        child->render(context, material);
     }
 }
 
@@ -117,9 +118,12 @@ void Pivot3D::translate(float /*x*/, float /*y*/, float /*z*/)
 {
 }
 
-void Pivot3D::rotate(float angle, float x, float y, float z)
+void Pivot3D::rotate(float x, float y, float z)
 {
-	this->_model = glm::rotate(_model, angle, glm::vec3(x, y, z));
+	_rotation.x += x;
+	_rotation.y += y;
+	_rotation.z += z;
+	// this->_model = glm::rotate(_model, angle, glm::vec3(x, y, z));
 }
 
 void Pivot3D::scale(float /*x*/, float /*y*/, float /*z*/)
@@ -176,11 +180,3 @@ void Pivot3D::setName(const std::string &name)
 {
     _name = name;
 }
-
-void Pivot3D::applyTransformRotation()
-{
-    _model = glm::rotate(_model, _rotation.x, glm::vec3(1, 0, 0));
-    _model = glm::rotate(_model, _rotation.y, glm::vec3(0, 1, 0));
-    _model = glm::rotate(_model, _rotation.z, glm::vec3(0, 0, 1));
-}
-

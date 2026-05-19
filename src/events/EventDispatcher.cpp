@@ -5,7 +5,7 @@ EventDispatcher::EventDispatcher()
 
 }
 
-listenerFuncPtr EventDispatcher::addEventListener(std::string event, listenerFuncPtr handler)
+listenerFuncPtr EventDispatcher::addEventListener(const std::string& event, listenerFuncPtr handler)
 {
     auto mapIterator = _listeners.find(event);
     if (mapIterator == _listeners.end()) {
@@ -24,7 +24,7 @@ listenerFuncPtr EventDispatcher::addEventListener(std::string event, listenerFun
     return handler;
 }
 
-void EventDispatcher::removeEventListener(std::string event, listenerFuncPtr handler)
+void EventDispatcher::removeEventListener(const std::string& event, listenerFuncPtr handler)
 {
     auto mapIterator = _listeners.find(event);
     if (mapIterator != _listeners.end()) {
@@ -41,7 +41,7 @@ void EventDispatcher::removeEventListener(std::string event, listenerFuncPtr han
     }
 }
 
-void EventDispatcher::dispatchEvent(std::string event)
+void EventDispatcher::dispatchEvent(const std::string& event)
 {
     auto mapIterator = _listeners.find(event);
     if (mapIterator != _listeners.end()) {
@@ -53,7 +53,7 @@ void EventDispatcher::dispatchEvent(std::string event)
     }
 }
 
-bool EventDispatcher::hasEventListener(std::string event)
+bool EventDispatcher::hasEventListener(const std::string& event)
 {
     auto mapIterator = _listeners.find(event);
     return mapIterator != _listeners.end();

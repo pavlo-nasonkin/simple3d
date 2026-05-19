@@ -11,7 +11,7 @@ public:
 	static const int ACTION_PRESS = 1;
 	static const int ACTION_RELEASE = 0;
 private:
-	static bool _keys[1024];
+	static std::vector<bool> _keys;
 	static std::vector<IKeyboardListener*> _listeners;
 public:
 	KeyboardInput();

@@ -22,10 +22,10 @@ private:
 public:
     EventDispatcher();
     virtual ~EventDispatcher() = default;
-    listenerFuncPtr addEventListener(std::string event, listenerFuncPtr handlerFunc);
-    void removeEventListener(std::string event, listenerFuncPtr handlerFunc);
-    void dispatchEvent(std::string event);
-    bool hasEventListener(std::string event);
+    listenerFuncPtr addEventListener(const std::string& event, listenerFuncPtr handlerFunc);
+    void removeEventListener(const std::string& event, listenerFuncPtr handlerFunc);
+    void dispatchEvent(const std::string& event);
+    bool hasEventListener(const std::string& event);
 };
 
 #endif // EVENTDISPATCHER_H

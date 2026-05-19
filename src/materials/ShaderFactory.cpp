@@ -27,7 +27,7 @@ std::shared_ptr<Shader> ShaderFactory::getShader(std::string vertShaderPath, std
 		return mapIterator->second;
 	}
 
-    std::shared_ptr<Shader> shader = std::make_shared<Shader>(Shader(vertex, fragment));
+    std::shared_ptr<Shader> shader = std::make_shared<Shader>(vertex, fragment);
     auto vertexIter = _vertexShaders.find(vertShaderPath);
     if (vertexIter != _vertexShaders.end())
     {

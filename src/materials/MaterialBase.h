@@ -5,6 +5,8 @@
 #include <string>
 #include <memory>
 
+#include "../render/RenderContext.h"
+
 class Shader;
 class Mesh;
 
@@ -30,7 +32,7 @@ public:
     MaterialBase(std::shared_ptr<Shader> shader);
 	virtual ~MaterialBase();
     virtual void build();
-	virtual void bind(const Mesh* mesh = nullptr);
+	virtual void bind(const RenderContext& ctx, const Mesh* mesh = nullptr);
 	virtual void unbind();
     std::string name() const;
     void setName(const std::string &name);

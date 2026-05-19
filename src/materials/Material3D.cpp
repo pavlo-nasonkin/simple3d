@@ -1,13 +1,15 @@
-#include "Material3D.h"
-#include "GLEWImporter.h"
-#include "Shader.h"
-#include "resources/Texture2D.h"
+#include "../materials/Material3D.h"
+#include "../GLEWImporter.h"
+#include "../Shader.h"
+#include "../resources/Texture2D.h"
 #include <glm/gtc/type_ptr.hpp>
-#include "Device3D.h"
-#include "Scene3D.h"
-#include "camera/Camera.h"
-#include "materials/Filter3d.h"
-#include "utils/StringUtils.h"
+
+#include "Engine.h"
+#include "../Device3D.h"
+#include "../Scene3D.h"
+#include "../camera/Camera.h"
+#include "Filter3d.h"
+#include "../utils/StringUtils.h"
 
 Material3D::Material3D(std::shared_ptr<Shader> shader)
     :MaterialBase(shader)
@@ -73,9 +75,9 @@ void Material3D::build()
     }
 }
 
-void Material3D::bind(const Mesh* mesh/* = nullptr*/)
+void Material3D::bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
 {
-	MaterialBase::bind(mesh);
+	MaterialBase::bind(ctx, mesh);
 
     for (auto filter : _filters)
     {
@@ -87,20 +89,20 @@ void Material3D::bind(const Mesh* mesh/* = nullptr*/)
 	GLint projectionLoc = glGetUniformLocation(_shader->Program, "projection");
 	GLint viewPosLoc = glGetUniformLocation(_shader->Program, "viewPos");
 
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, Device3D::model);
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, Device3D::view);
-	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, Device3D::projection);
-	glUniform3f(viewPosLoc, Device3D::camera->Position.x, Device3D::camera->Position.y, Device3D::camera->Position.z);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(ctx.model));
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(ctx.view));
+	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(ctx.projection));
+	glUniform3f(viewPosLoc, ctx.camera->Position.x, ctx.camera->Position.y, ctx.camera->Position.z);
 
 
 	GLint lightPositionLoc = glGetUniformLocation(_shader->Program, "light.position");
 	GLint lightAmbientLoc = glGetUniformLocation(_shader->Program, "light.ambient");
 	GLint lightDiffuseLoc = glGetUniformLocation(_shader->Program, "light.diffuse");
 	GLint lightSpecularLoc = glGetUniformLocation(_shader->Program, "light.specular");
-	const glm::vec3* lightAmbient = Device3D::scene3D->getLightAmbient();
-	const glm::vec3* lightDiffuce = Device3D::scene3D->getLightDiffuse();
-	const glm::vec3* lightSpecular = Device3D::scene3D->getLightSpecular();
-	const glm::vec3* lightPos = Device3D::scene3D->getLightPosition();
+	const glm::vec3* lightAmbient = ctx.scene3D->getLightAmbient();
+	const glm::vec3* lightDiffuce = ctx.scene3D->getLightDiffuse();
+	const glm::vec3* lightSpecular = ctx.scene3D->getLightSpecular();
+	const glm::vec3* lightPos = ctx.scene3D->getLightPosition();
 
 	glUniform3f(lightAmbientLoc, lightAmbient->x, lightAmbient->y, lightAmbient->z);
 	glUniform3f(lightDiffuseLoc, lightDiffuce->x, lightDiffuce->y, lightDiffuce->z); // Let's darken the light a bit to fit the scene
@@ -162,10 +164,10 @@ Material3D::~Material3D()
 
 std::shared_ptr<MaterialBase> Material3D::clone() const
 {
-    auto result = std::make_shared<Material3D>(Material3D(*this));
+    auto result = std::make_shared<Material3D>(*this);
     result->setId(_idCounter);
     _idCounter++;
-    auto shaderCopy = std::make_shared<Shader>(Shader(*_shader.get()));
+    auto shaderCopy = std::make_shared<Shader>(*_shader);
     shaderCopy->Program = 0;
     result->setShader(shaderCopy);
     return result;

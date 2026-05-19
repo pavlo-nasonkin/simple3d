@@ -55,24 +55,25 @@ set(SOURCE_FILES
         src/utils/Math3d.h
         src/utils/StringUtils.h
         src/utils/StringUtils.cpp
-        src/BoxModel.cpp
-        src/BoxModel.h
+        src/models/BoxModel.cpp
+        src/models/BoxModel.h
         src/Device3D.cpp
         src/Device3D.h
         src/Engine.cpp
         src/Engine.h
-        src/ExternalModel.cpp
-        src/ExternalModel.h
+        src/models/ExternalModel.cpp
+        src/models/ExternalModel.h
         src/GLUtils.cpp
         src/GLUtils.h
-        src/Material3D.cpp
-        src/Material3D.h
-        src/Mesh.cpp
-        src/Mesh.h
-        src/Model.cpp
-        src/Model.h
+        src/materials/Material3D.cpp
+        src/materials/Material3D.h
+        src/models/Mesh.cpp
+        src/models/Mesh.h
+        src/models/Model.cpp
+        src/models/Model.h
         src/Pivot3D.cpp
         src/Pivot3D.h
+        src/render/RenderContext.h
         src/Scene3D.cpp
         src/Scene3D.h
         src/Shader.cpp

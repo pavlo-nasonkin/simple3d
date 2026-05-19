@@ -55,8 +55,7 @@ void FreeLookCamera::handleMouseButton(int button, int action)
 	case GLFW_MOUSE_BUTTON_RIGHT:
 	{
 		_cameraRotate = action == GLFW_PRESS;
-        auto target = Engine::objectSelector->getSelectedObject();
-        if (target) {
+		if (const auto& target = Engine::objectSelector->getSelectedObject()) {
             _rotationOrbitRadius = glm::length(*target->getPosition() - Position);
 		}
 		else {
@@ -72,12 +71,12 @@ void FreeLookCamera::handleMouseButton(int button, int action)
 void FreeLookCamera::handleMouseMove(double xpos, double ypos)
 {
 	if (_cameraDrag) {
-        float offsetX = static_cast<float>(_startX - xpos);
-        float offsetY = static_cast<float>(_startY - ypos);
+        auto offsetX = static_cast<float>(_startX - xpos);
+        auto offsetY = static_cast<float>(_startY - ypos);
 
-		offsetX /= Device3D::sceenWidth;
+		offsetX /= static_cast<float>(Device3D::sceenWidth);
 		offsetX *= 3;
-		offsetY /= Device3D::sceenHeight;
+		offsetY /= static_cast<float>(Device3D::sceenHeight);
 		offsetY *= 3;
 		this->Position += this->Right * offsetX;
 		this->Position -= this->Up * offsetY;
@@ -86,16 +85,16 @@ void FreeLookCamera::handleMouseMove(double xpos, double ypos)
 	}
 	else if (_cameraRotate) {
 
-		glm::vec3 fakeTarget = this->Position + (this->Front * (float)_rotationOrbitRadius);
+		glm::vec3 fakeTarget = this->Position + (this->Front * static_cast<float>(_rotationOrbitRadius));
 		//Pivot3D* target = Engine::objectSelector->getSelectedObject();
 
-        GLfloat xoffset = static_cast<GLfloat>((xpos - _startX) / 4.0);
-        GLfloat yoffset = static_cast<GLfloat>((_startY - ypos) / 4.0);
+        auto xOffset = static_cast<GLfloat>((xpos - _startX) / 4.0);
+        auto yOffset = static_cast<GLfloat>((_startY - ypos) / 4.0);
 		_startX = xpos;
 		_startY = ypos;
 
-		Pitch = Pitch + yoffset;
-		Yaw = fmodf(Yaw + xoffset, 360.f);
+		Pitch = Pitch + yOffset;
+		Yaw = fmodf(Yaw + xOffset, 360.f);
 
 		glm::mat4 view;
 		

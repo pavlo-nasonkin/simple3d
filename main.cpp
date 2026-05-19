@@ -10,7 +10,7 @@
 #include "Shader.h"
 #include "camera/FirstPersonCamera.h"
 
-#include "BoxModel.h"
+#include "models/BoxModel.h"
 #include "GLFWKeyboardInput.h"
 #include "render/RenderModeHelper.h"
 #include "GLFWMouseInput.h"
@@ -20,7 +20,7 @@
 #include "Device3D.h"
 #include "materials/ShaderFactory.h"
 
-#include "ExternalModel.h"
+#include "models/ExternalModel.h"
 
 
 GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
@@ -40,16 +40,17 @@ int main() {
 	}
 
 	Engine engine;
-	FreeLookCamera camera1;
-	camera1.buildProjectionMatrix(screenWidth, screenHeight, 45.0f, 0.1f, 100.0f);
-	auto scene = std::make_shared<Scene3D>(&camera1);
+	auto camera = std::make_shared<FirstPersonCamera>();
+	camera->buildProjectionMatrix(screenWidth, screenHeight, 45.0f, 0.1f, 100.0f);
+	camera->Position.z = 3.0f;
+	
+	auto scene3D = std::make_shared<Scene3D>();;
+	scene3D->init();
 	UpdateBroadcaster updateBroadcaster;
 	GLFWMouseInput mouseInput(window);
 	GLFWKeyboardInput keyboardInput(window);
-	//MouseInput mouseInput();
-	//KeyboardInput keyboardInput();
 	RenderModeHelper renderModeHelper;
-	ObjectSelector objectSelector;
+	ObjectSelector objectSelector(scene3D, camera);
 	engine.objectSelector = &objectSelector;
 
 	//TODO move to Material3D
@@ -59,33 +60,42 @@ int main() {
 
 	
 	auto box = std::make_shared<BoxModel>();
+	box->init();
 	auto box2 = std::make_shared<BoxModel>();
-	auto box3 = std::make_shared<BoxModel>();
+	box2->SetColor(0x00ff00);
+	box2->init();
 
-	box2->setPosition(5.0f, 0.0f, 0.0f);
 
-	box3->setPosition(0.0f, 0.0f, -5.0f);
+	box2->setPosition(1.0f, 0.0f, 0.0f);
+	box2->setScale(0.5f, 0.5f, 0.5f);
 
-	//auto soldier = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
-	//scene.addChild(soldier);
-	scene->addChild(box);
-	scene->addChild(box2);
-	scene->addChild(box3);
-
-	
+	auto soldier = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
+	soldier->init();
+	scene3D->addChild(soldier);
+	scene3D->addChild(box);
+	box->addChild(box2);
 	
 	//main loop
 	while (!glfwWindowShouldClose(window))
 	{
-
 		glfwPollEvents();
 
 		GLfloat currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		updateBroadcaster.update(deltaTime);
 
-		scene->render();
+		box->rotate(0.0f,1 * deltaTime, 0.0f);
+		box2->rotate(1 * deltaTime,0.0f, 0.0f);
+
+
+		updateBroadcaster.update(deltaTime);
+		RenderContext ctx;
+		ctx.model = glm::mat4(1.0f);
+		ctx.camera = camera.get();
+		ctx.view = camera->GetViewMatrix();
+		ctx.projection = camera->getProjectionMatrix();
+		ctx.scene3D = scene3D.get();
+		scene3D->render(ctx);
 
 		glfwSwapBuffers(window);
 	}
