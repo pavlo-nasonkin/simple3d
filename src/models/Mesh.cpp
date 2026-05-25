@@ -1,15 +1,9 @@
 #include "Mesh.h"
-#include "../materials/MaterialBase.h"
-#include "../Pivot3D.h"
-#include "../Device3D.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include "../GLUtils.h"
-#include "../utils/Math3d.h"
+#include "materials/MaterialBase.h"
+#include "Pivot3D.h"
+#include "GLUtils.h"
+#include "utils/Math3d.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include "../utils/Math3d.h"
-
-//unsigned int Mesh::_idCounter = 0;
 
 Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::shared_ptr<MaterialBase>& mat, const std::vector<VertexBoneData>& bones)
     :Pivot3D(),
@@ -21,12 +15,12 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indic
     _hasBones = !bones.empty();
     _name = "Mesh";
 	// Now that we have all the required data, set the vertex buffers and its attribute pointers.
-	this->setupMesh();
+	setupMesh();
 }
 
 // Render the mesh
 
-void Mesh::render(const RenderContext &ctx, MaterialBase* material)
+void Mesh::Render(const RenderContext &ctx, MaterialBase* material)
 {
     RenderContext context =  ctx;
     context.model = ctx.model * LocalMatrix();
@@ -41,7 +35,7 @@ void Mesh::render(const RenderContext &ctx, MaterialBase* material)
     material->unbind();
 
     for (auto& child : _children) {
-        child->render(context, material);
+        child->Render(context, material);
     }
 }
 

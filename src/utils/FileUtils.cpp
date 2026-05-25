@@ -6,12 +6,8 @@
 //#include <windows.h>
 
 
-std::string FileUtils::readFile(std::string path)
+std::string FileUtils::readFile(const std::string& path)
 {
-//	TCHAR result[MAX_PATH];
-//	auto dir = GetModuleFileName(NULL, result, MAX_PATH);
-
-
 	std::string vertexCode;
 	std::ifstream fileStream;
 	// ensures ifstream objects can throw exceptions:
@@ -26,12 +22,11 @@ std::string FileUtils::readFile(std::string path)
 		stringStream << fileStream.rdbuf();
 		// close file handlers
 		fileStream.close();
-		// Convert stream into GLchar array
 		return stringStream.str();
 	}
 	catch (std::ifstream::failure& e)
 	{
-		std::cout << "ERROR::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+		std::cout << "ERROR::FILE_NOT_SUCCESSFULLY_READ" << std::endl;
 		std::cout << path << std::endl;
 	}
 	return "";

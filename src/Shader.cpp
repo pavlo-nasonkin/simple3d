@@ -42,7 +42,7 @@ Shader::Shader(const GLchar * vertexPath, const GLchar * fragmentPath)
 	}
 	catch (const std::ifstream::failure& e)
 	{
-	    Engine::Log("Shader file not successfully read: " + std::string(e.what()) + " vertexPath: " + vertexPath + " fragmentPath: " + fragmentPath);
+	    Engine::GetInstance().Log("Shader file not successfully read: " + std::string(e.what()) + " vertexPath: " + vertexPath + " fragmentPath: " + fragmentPath);
 	}
 
     build();

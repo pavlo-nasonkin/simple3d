@@ -1,6 +1,4 @@
 #pragma once
-#ifndef Scene3D_h__
-#define Scene3D_h__
 
 #include "Pivot3D.h"
 #include <glm/glm.hpp>
@@ -31,10 +29,10 @@ public:
 	~Scene3D() override;
 
 	void update();
-    void render(const RenderContext& ctx, MaterialBase* material = nullptr) override;
+    void Render(const RenderContext& ctx, MaterialBase* material = nullptr) override;
 	void postRender();
 	void prepareRender();
-    void init() override;
+    void Init() override;
 	//light params
 	const glm::vec3* getLightAmbient() const { return &_lightAmbient; }
 	void setLightAmbient(glm::vec3 val) { _lightAmbient = val; }
@@ -48,5 +46,3 @@ public:
 private:
     void initLightView();
 };
-
-#endif // Scene3D_h__

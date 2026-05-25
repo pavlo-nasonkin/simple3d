@@ -25,12 +25,12 @@ void MaterialBase::setId(unsigned int id)
     _id = id;
 }
 
-void MaterialBase::setShader(const std::shared_ptr<Shader> &shader)
+void MaterialBase::setShader(const std::shared_ptr<Shader>& shader)
 {
     _shader = shader;
 }
 
-MaterialBase::MaterialBase(std::shared_ptr<Shader> shader)
+MaterialBase::MaterialBase(const std::shared_ptr<Shader>& shader)
     :_shader(shader),
       _cullFace(CullFaceMode::back)
 {

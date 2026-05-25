@@ -1,6 +1,4 @@
 #pragma once
-#ifndef KeyboardInput_h__
-#define KeyboardInput_h__
 #include <vector>
 
 class IKeyboardListener;
@@ -8,20 +6,18 @@ class IKeyboardListener;
 class KeyboardInput
 {
 public:
-	static const int ACTION_PRESS = 1;
-	static const int ACTION_RELEASE = 0;
-private:
-	static std::vector<bool> _keys;
-	static std::vector<IKeyboardListener*> _listeners;
-public:
-	KeyboardInput();
-	~KeyboardInput();
-	static void addListener(IKeyboardListener* listener);
-	static bool isKeyPressed(int key);
-protected:
-	static void onKeyAction(int key, int action);
-	
-private:
-};
+	static constexpr int ACTION_PRESS = 1;
+	static constexpr int ACTION_RELEASE = 0;
 
-#endif // KeyboardInput_h__
+	KeyboardInput();
+	~KeyboardInput() = default;
+	void AddListener(IKeyboardListener* listener);
+	void RemoveListener(IKeyboardListener* listener);
+	bool IsKeyPressed(int key) const;
+
+	void OnKeyAction(int key, int action);
+
+private:
+	std::vector<bool> _keys = std::vector<bool>(1024, false);
+	std::vector<IKeyboardListener*> _listeners;
+};

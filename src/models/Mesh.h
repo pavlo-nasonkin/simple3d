@@ -68,7 +68,7 @@ public:
     Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::shared_ptr<MaterialBase>& mat, const std::vector<VertexBoneData>& bones);
 	~Mesh() override = default;
 	// Render the mesh
-    void render(const RenderContext &ctx, MaterialBase* material) override;
+    void Render(const RenderContext &ctx, MaterialBase* material) override;
     std::shared_ptr<MaterialBase> material() const;
 
 private:

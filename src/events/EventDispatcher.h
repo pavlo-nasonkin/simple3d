@@ -18,14 +18,14 @@ typedef std::shared_ptr<listenerFunc> listenerFuncPtr;
 class EventDispatcher
 {
 private:
-    std::map<std::string, std::vector<listenerFuncPtr>> _listeners;
+    std::map<std::string, std::vector<listenerFuncPtr>, std::less<>> _listeners;
 public:
     EventDispatcher();
     virtual ~EventDispatcher() = default;
-    listenerFuncPtr addEventListener(const std::string& event, listenerFuncPtr handlerFunc);
-    void removeEventListener(const std::string& event, listenerFuncPtr handlerFunc);
-    void dispatchEvent(const std::string& event);
-    bool hasEventListener(const std::string& event);
+    listenerFuncPtr addEventListener(std::string_view event, listenerFuncPtr handlerFunc);
+    void removeEventListener(std::string_view event, listenerFuncPtr handlerFunc);
+    void dispatchEvent(std::string_view event);
+    bool hasEventListener(std::string_view event);
 };
 
 #endif // EVENTDISPATCHER_H

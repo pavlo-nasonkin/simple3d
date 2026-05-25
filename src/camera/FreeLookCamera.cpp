@@ -2,13 +2,10 @@
 #include "input/MouseInput.h"
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <iostream>
 #include <algorithm>
 #include "Pivot3D.h"
 #include "Engine.h"
 #include "object_selector/ObjectSelector.h"
-#include "Device3D.h"
-
 
 FreeLookCamera::FreeLookCamera(glm::vec3 position /*= glm::vec3(0.0f, 0.0f, 0.0f)*/, 
 	glm::vec3 up /*= glm::vec3(0.0f, 1.0f, 0.0f)*/, 
@@ -16,23 +13,18 @@ FreeLookCamera::FreeLookCamera(glm::vec3 position /*= glm::vec3(0.0f, 0.0f, 0.0f
 	GLfloat pitch /*= Camera::PITCH*/)
 	: Camera(position, up, yaw, pitch)
 {
-	MouseInput::addListener(this, MouseInput::MOUSE_MOVE);
-	MouseInput::addListener(this, MouseInput::MOUSE_BUTTON);
-	MouseInput::addListener(this, MouseInput::MOUSE_SCROLL);
+	SubscribeToEvents();
 }
 
 FreeLookCamera::FreeLookCamera(GLfloat posX, GLfloat posY, GLfloat posZ, 
 	GLfloat upX, GLfloat upY, GLfloat upZ, GLfloat yaw, GLfloat pitch)
 	: Camera(posX, posY, posZ, upX, upY, upZ, yaw, pitch)
 {
-	MouseInput::addListener(this, MouseInput::MOUSE_MOVE);
-	MouseInput::addListener(this, MouseInput::MOUSE_BUTTON);
-	MouseInput::addListener(this, MouseInput::MOUSE_SCROLL);
+	SubscribeToEvents();
 }
 
-FreeLookCamera::~FreeLookCamera()
-{
-
+FreeLookCamera::~FreeLookCamera() {
+	UnsubscribeFromEvents();
 }
 
 glm::mat4 FreeLookCamera::GetViewMatrix()
@@ -40,10 +32,10 @@ glm::mat4 FreeLookCamera::GetViewMatrix()
 	return Camera::GetViewMatrix();
 }
 
-void FreeLookCamera::handleMouseButton(int button, int action)
+void FreeLookCamera::HandleMouseButton(int button, int action)
 {
-	_startX = MouseInput::mouseX();
-	_startY = MouseInput::mouseY();
+	_startX = Engine::GetInstance().GetMouseInput()->GetMouseX();
+	_startY = Engine::GetInstance().GetMouseInput()->GetMouseY();
 
 	switch (button)
 	{
@@ -55,8 +47,8 @@ void FreeLookCamera::handleMouseButton(int button, int action)
 	case GLFW_MOUSE_BUTTON_RIGHT:
 	{
 		_cameraRotate = action == GLFW_PRESS;
-		if (const auto& target = Engine::objectSelector->getSelectedObject()) {
-            _rotationOrbitRadius = glm::length(*target->getPosition() - Position);
+		if (const auto& target = Engine::GetInstance().GetObjectSelector()->GetSelectedObject()) {
+            _rotationOrbitRadius = glm::length(*target->GetPosition() - Position);
 		}
 		else {
 			_rotationOrbitRadius = 3.0f;// glm::length(Position);
@@ -68,15 +60,15 @@ void FreeLookCamera::handleMouseButton(int button, int action)
 	}
 }
 
-void FreeLookCamera::handleMouseMove(double xpos, double ypos)
+void FreeLookCamera::HandleMouseMove(double xpos, double ypos)
 {
 	if (_cameraDrag) {
         auto offsetX = static_cast<float>(_startX - xpos);
         auto offsetY = static_cast<float>(_startY - ypos);
 
-		offsetX /= static_cast<float>(Device3D::sceenWidth);
+		offsetX /= _screenWidth;
 		offsetX *= 3;
-		offsetY /= static_cast<float>(Device3D::sceenHeight);
+		offsetY /= _screenHeight;
 		offsetY *= 3;
 		this->Position += this->Right * offsetX;
 		this->Position -= this->Up * offsetY;
@@ -114,10 +106,22 @@ void FreeLookCamera::handleMouseMove(double xpos, double ypos)
 	}
 }
 
-void FreeLookCamera::handleMouseScroll(double/* xoffset*/, double yoffset)
+void FreeLookCamera::HandleMouseScroll(double/* xoffset*/, double yoffset)
 {
 	if (!_cameraDrag) {
 		this->Position += this->Front * float(yoffset);
 	}
+}
+
+void FreeLookCamera::SubscribeToEvents() {
+	Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_MOVE);
+	Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_BUTTON);
+	Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_SCROLL);
+}
+
+void FreeLookCamera::UnsubscribeFromEvents() {
+	Engine::GetInstance().GetMouseInput()->RemoveListener(this, MouseInput::MOUSE_MOVE);
+	Engine::GetInstance().GetMouseInput()->RemoveListener(this, MouseInput::MOUSE_BUTTON);
+	Engine::GetInstance().GetMouseInput()->RemoveListener(this, MouseInput::MOUSE_SCROLL);
 }
 

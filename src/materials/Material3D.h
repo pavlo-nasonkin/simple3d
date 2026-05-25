@@ -10,23 +10,22 @@ class Shader;
 class Texture2D;
 class Mesh;
 class Filter3D;
-typedef std::vector<std::shared_ptr<Filter3D>> filters_list;
 
 class Material3D: public MaterialBase
 {
-private:
-    filters_list _filters;
+    using FiltersList = std::vector<std::shared_ptr<Filter3D>>;
+    FiltersList _filters;
     std::vector<std::shared_ptr<Texture2D>> _textures;
 public:
-    Material3D(std::shared_ptr<Shader> shader);
-    ~Material3D();
+    Material3D(const std::shared_ptr<Shader>& shader);
+    ~Material3D() override = default;
     void build() override;
 	void bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
 	void unbind() override;
     void addFilter(std::shared_ptr<Filter3D> filter);
     const std::vector<std::shared_ptr<Texture2D>>& getTextures() const { return _textures; }
     void setTextures(const std::vector<std::shared_ptr<Texture2D>>& val) { _textures = val; }
-    filters_list getFilters() const;
+    const FiltersList& getFilters() const;
     std::shared_ptr<MaterialBase> clone() const override;
 protected:
 

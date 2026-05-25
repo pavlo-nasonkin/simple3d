@@ -93,7 +93,7 @@
   - Запретить копирование `Shader` (или сделать move-only), чтобы не было двойного `glDeleteProgram` той же программы.
   - Файлы: `src/Mesh.cpp`, `src/Shader.h/.cpp`.
 
-- [ ] **2.6. `removeListener` в инпутах.** Сейчас при уничтожении объекта‑слушателя его указатель остаётся в static-векторе → dangling pointer.
+- [x] **2.6. `removeListener` в инпутах.** Сейчас при уничтожении объекта‑слушателя его указатель остаётся в static-векторе → dangling pointer.
   - Добавить в `MouseInput`/`KeyboardInput`/`UpdateBroadcaster` метод `removeListener` и вызывать его из деструкторов `FreeLookCamera`, `FirstPersonCamera`, `ObjectSelector`.
   - Файлы: `src/input/MouseInput.*`, `src/input/KeyboardInput.*`, `src/UpdateBroadcaster.*`, `src/camera/*`, `src/object_selector/ObjectSelector.*`.
 
@@ -117,7 +117,7 @@
   - Передавать `const RenderContext&` (или `&`) в `Pivot3D::render(ctx, material)` и `MaterialBase::bind(ctx, mesh)`.
   - Файл: новый `src/render/RenderContext.h`.
 
-- [ ] **3.2. Убрать `Device3D`.** После 3.1 этот класс не нужен; вместо него — `RenderContext`, который владеется сценой и расходуется фрейм.
+- [x] **3.2. Убрать `Device3D`.** После 3.1 этот класс не нужен; вместо него — `RenderContext`, который владеется сценой и расходуется фрейм.
   - Удалить `src/Device3D.h/.cpp`, поправить все `Device3D::view/projection/...` → `ctx.view/...`.
 
 - [ ] **3.3. Материал владеет собственным шейдером.**
@@ -140,16 +140,16 @@
 
 ## Этап 4. Стабильность и оконные события
 
-- [ ] **4.1. Обрабатывать resize окна.** `glfwSetFramebufferSizeCallback` → обновлять `Device3D::sceenWidth/Height` (или поле `Scene::viewport`) и вызывать `glViewport`, пересобирать `projection` у камеры.
+- [x] **4.1. Обрабатывать resize окна.** `glfwSetFramebufferSizeCallback` → обновлять `Device3D::sceenWidth/Height` (или поле `Scene::viewport`) и вызывать `glViewport`, пересобирать `projection` у камеры.
   - Файл: `main.cpp`.
 
-- [ ] **4.2. Исправить опечатку `sceenWidth` → `screenWidth`.** Если ещё не уберём `Device3D` полностью.
+- [x] **4.2. Исправить опечатку `sceenWidth` → `screenWidth`.** Если ещё не уберём `Device3D` полностью.
 
 - [ ] **4.3. Использовать пути относительно exe.** `"../assets/..."` ломается при запуске из IDE-папки или инсталла.
   - Через `std::filesystem` определить путь рядом с `argv[0]`, относительно него грузить `assets/`.
   - Файлы: `main.cpp`, `src/materials/ShaderFactory.cpp`, `src/utils/FileUtils.cpp`.
 
-- [ ] **4.4. Бросать `std::exception`, а не `const char*`.** Заменить `throw "..."` на `throw std::invalid_argument(...)` / `std::runtime_error(...)`.
+- [x] **4.4. Бросать `std::exception`, а не `const char*`.** Заменить `throw "..."` на `throw std::invalid_argument(...)` / `std::runtime_error(...)`.
   - Файлы: `src/Pivot3D.cpp`, `src/materials/ShaderFactory.cpp`.
 
 ---
@@ -161,7 +161,7 @@
 - [x] **5.2. Убрать антипаттерн `make_shared<T>(T(...))`.** Заменить на `make_shared<T>(args...)`. Особенно важно для `Mesh` (избегаем копирования `vector<Vertex>`).
   - Файлы: повсеместно, см. `Material3D::clone`, `BoxModel::processMesh`, `ExternalModel::processMesh`, `Scene3D::Scene3D`, `ObjectSelector::ObjectSelector` и др.
 
-- [ ] **5.3. `std::string` → `std::string_view`** в сигнатурах геттеров/сеттеров и аргументах кэшей (`TextureManager`, `EventDispatcher`, `ShaderFactory`).
+- [x] **5.3. `std::string` → `std::string_view`** в сигнатурах геттеров/сеттеров и аргументах кэшей (`TextureManager`, `EventDispatcher`, `ShaderFactory`).
 
 - [ ] **5.4. `Mesh` владеет своими ресурсами, а не «голыми» `GLuint`.** Завести `class GLBuffer` / `class GLVertexArray` RAII-обёртки (или `std::unique_ptr` с кастомным deleter’ом).
 

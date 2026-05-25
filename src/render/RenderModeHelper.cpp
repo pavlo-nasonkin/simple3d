@@ -3,25 +3,27 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include "Engine.h"
+
 RenderModeHelper::RenderModeHelper()
 {
-	KeyboardInput::addListener(this);
+	Engine::GetInstance().GetKeyboardInput()->AddListener(this);
 }
 
 RenderModeHelper::~RenderModeHelper()
 {
-	//KeyboardInput::removeListener(this);
+	Engine::GetInstance().GetKeyboardInput()->RemoveListener(this);
 }
 
-void RenderModeHelper::setWireframeMode(bool value)
+void RenderModeHelper::SetWireframeMode(bool value)
 {
 	_wireframeMode = value;
 	_wireframeMode ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE) : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void RenderModeHelper::handleKeyInput(int key, int action)
+void RenderModeHelper::HandleKeyInput(int key, int action)
 {
 	if (key == GLFW_KEY_F3 && action == GLFW_PRESS) {
-		setWireframeMode(!_wireframeMode);
+		SetWireframeMode(!_wireframeMode);
 	}
 }

@@ -11,13 +11,10 @@
 #include "camera/FirstPersonCamera.h"
 
 #include "models/BoxModel.h"
-#include "GLFWKeyboardInput.h"
 #include "render/RenderModeHelper.h"
-#include "GLFWMouseInput.h"
 #include "camera/FreeLookCamera.h"
 #include "Engine.h"
 #include "Scene3D.h"
-#include "Device3D.h"
 #include "materials/ShaderFactory.h"
 
 #include "models/ExternalModel.h"
@@ -27,85 +24,102 @@ GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
 GLfloat lastFrame = 0.0f;  	// Time of last frame
 							
 
-int initWindow();
+int initWindow(float w, float h);
 GLFWwindow* window;
-float screenWidth = 800;
-float screenHeight = 600;
 
 int main() {
 
-	int initResult = initWindow();
+	float screenWidth = 800;
+	float screenHeight = 600;
+
+	int initResult = initWindow(screenWidth, screenHeight);
 	if (initResult != 0) {
 		return initResult;
 	}
 
-	Engine engine;
-	auto camera = std::make_shared<FirstPersonCamera>();
-	camera->buildProjectionMatrix(screenWidth, screenHeight, 45.0f, 0.1f, 100.0f);
-	camera->Position.z = 3.0f;
-	
-	auto scene3D = std::make_shared<Scene3D>();;
-	scene3D->init();
-	UpdateBroadcaster updateBroadcaster;
-	GLFWMouseInput mouseInput(window);
-	GLFWKeyboardInput keyboardInput(window);
-	RenderModeHelper renderModeHelper;
-	ObjectSelector objectSelector(scene3D, camera);
-	engine.objectSelector = &objectSelector;
+	Engine::GetInstance().Init(window);
 
-	//TODO move to Material3D
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-
-	
-	auto box = std::make_shared<BoxModel>();
-	box->init();
-	auto box2 = std::make_shared<BoxModel>();
-	box2->SetColor(0x00ff00);
-	box2->init();
-
-
-	box2->setPosition(1.0f, 0.0f, 0.0f);
-	box2->setScale(0.5f, 0.5f, 0.5f);
-
-	auto soldier = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
-	soldier->init();
-	scene3D->addChild(soldier);
-	scene3D->addChild(box);
-	box->addChild(box2);
-	
-	//main loop
-	while (!glfwWindowShouldClose(window))
 	{
-		glfwPollEvents();
+		auto camera = std::make_shared<FirstPersonCamera>();
+		camera->SetScreenWidth(screenWidth);
+		camera->SetScreenHeight(screenHeight);
+		camera->buildProjectionMatrix(45.0f, 0.1f, 100.0f);
+		camera->Position.z = 3.0f;
 
-		GLfloat currentFrame = glfwGetTime();
-		deltaTime = currentFrame - lastFrame;
-		lastFrame = currentFrame;
+		auto scene3D = std::make_shared<Scene3D>();
+		scene3D->Init();
 
-		box->rotate(0.0f,1 * deltaTime, 0.0f);
-		box2->rotate(1 * deltaTime,0.0f, 0.0f);
+		Engine::GetInstance().SetObjectSelector(std::make_shared<ObjectSelector>(scene3D, camera));
+
+		//TODO move to Material3D
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
 
 
-		updateBroadcaster.update(deltaTime);
-		RenderContext ctx;
-		ctx.model = glm::mat4(1.0f);
-		ctx.camera = camera.get();
-		ctx.view = camera->GetViewMatrix();
-		ctx.projection = camera->getProjectionMatrix();
-		ctx.scene3D = scene3D.get();
-		scene3D->render(ctx);
+		auto box = std::make_shared<BoxModel>();
+		box->Init();
+		auto box2 = std::make_shared<BoxModel>();
+		box2->SetColor(0x00ff00);
+		box2->Init();
 
-		glfwSwapBuffers(window);
+
+		box2->SetPosition(1.0f, 0.0f, 0.0f);
+		box2->SetScale(0.5f, 0.5f, 0.5f);
+
+		auto soldier = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
+		soldier->Init();
+		soldier->SetScale(0.1f, 0.1f, 0.1f);
+
+		scene3D->AddChild(soldier);
+		scene3D->AddChild(box);
+		box->AddChild(box2);
+
+		glfwSetWindowUserPointer(window, camera.get());
+		glfwSetFramebufferSizeCallback(window, [](GLFWwindow* w, int width, int height) {
+			auto* cam = static_cast<Camera*>(glfwGetWindowUserPointer(w));
+			if (cam) {
+				cam->SetScreenWidth(static_cast<float>(width));
+				cam->SetScreenHeight(static_cast<float>(height));
+				cam->buildProjectionMatrix(45.0f, 0.1f, 100.0f);
+			}
+			glViewport(0, 0, width, height);
+		});
+
+
+		//main loop
+		while (!glfwWindowShouldClose(window))
+		{
+			glfwPollEvents();
+
+			GLfloat currentFrame = glfwGetTime();
+			deltaTime = currentFrame - lastFrame;
+			lastFrame = currentFrame;
+
+			box->Rotate(0.0f,1 * deltaTime, 0.0f);
+			box2->Rotate(1 * deltaTime,0.0f, 0.0f);
+
+
+			Engine::GetInstance().GetUpdateBroadcaster()->Update(deltaTime);
+			RenderContext ctx;
+			ctx.model = glm::mat4(1.0f);
+			ctx.camera = camera.get();
+			ctx.view = camera->GetViewMatrix();
+			ctx.projection = camera->getProjectionMatrix();
+			ctx.scene3D = scene3D.get();
+			scene3D->Render(ctx);
+
+			glfwSwapBuffers(window);
+		}
 	}
 
+	Engine::GetInstance().Cleanup();
 	glfwTerminate();
 	return 0;
 }
 
 
-int initWindow() {
+int initWindow(float w, float h) {
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -115,9 +129,7 @@ int initWindow() {
 	
 
 	//Creating a window
-	float screenWidth = 800;
-	float screenHeight = 600;
-	window = glfwCreateWindow(screenWidth, screenHeight, "LearnOpenGL", nullptr, nullptr);
+	window = glfwCreateWindow(w, h, "LearnOpenGL", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;

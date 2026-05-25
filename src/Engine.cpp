@@ -2,27 +2,52 @@
 
 #include <iostream>
 #include <ostream>
+#include <GLFW/glfw3.h>
 
+#include "UpdateBroadcaster.h"
+#include "render/RenderModeHelper.h"
 #include "resources/TextureManager.h"
-
+#include "input/GLFWKeyboardInput.h"
+#include "input/GLFWMouseInput.h"
 #ifdef WIN32
 #include <Windows.h>
 #else
 #include <sys/time.h>
 #endif
 
-TextureManager* Engine::textureManager;
-
-long long Engine::startTime = GetCurrentTimeMillis();
-
-ObjectSelector* Engine::objectSelector = nullptr;
-
 Engine::Engine()
 {
-	textureManager = new TextureManager();
+
 }
 
-long long Engine::GetCurrentTimeMillis()
+Engine::~Engine() = default;
+
+void Engine::Init(GLFWwindow* window)
+{
+    if (_mouseInput)
+    {
+        Cleanup();
+    }
+    Log("Engine Initialized");
+    _updateBroadcaster = std::make_shared<UpdateBroadcaster>();
+    _mouseInput = std::make_shared<GLFWMouseInput>(window);
+    _keyboardInput = std::make_shared<GLFWKeyboardInput>(window);
+    _textureManager = std::make_unique<TextureManager>();
+    _renderModeHelper = std::make_unique<RenderModeHelper>();
+    _startTime = GetCurrentTimeMillis();
+}
+
+void Engine::Cleanup()
+{
+    _renderModeHelper = nullptr;
+    _textureManager = nullptr;
+    _objectSelector = nullptr;
+    _mouseInput = nullptr;
+    _keyboardInput = nullptr;
+    _updateBroadcaster = nullptr;
+}
+
+long long Engine::GetCurrentTimeMillis() const
 {
 #ifdef WIN32
     return GetTickCount();
@@ -35,9 +60,9 @@ long long Engine::GetCurrentTimeMillis()
 #endif
 }
 
-double Engine::getTimerSec()
+double Engine::GetTimerSec() const
 {
-   return (float)((double)Engine::GetCurrentTimeMillis() - (double)startTime) / 1000.0f;
+   return static_cast<double>(GetCurrentTimeMillis() - _startTime) / 1000.0;
 }
 
 void Engine::Log(const std::string &msg) {

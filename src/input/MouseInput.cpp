@@ -2,37 +2,19 @@
 #include "events/IMouseListener.h"
 #include <algorithm>
 
-double MouseInput::_mouseX = 0.0;
-double MouseInput::_mouseY = 0.0;
-
 const std::string MouseInput::MOUSE_MOVE = "mouseMove";
 const std::string MouseInput::MOUSE_BUTTON = "mouseButton";
 const std::string MouseInput::MOUSE_SCROLL = "mouseScroll";
-
-std::vector<IMouseListener*> MouseInput::_cursorPosListeners;
-std::vector<IMouseListener*> MouseInput::_mouseButtonListeners;
-std::vector<IMouseListener*> MouseInput::_scrollListeners;
 
 MouseInput::MouseInput()
 {
 }
 
-MouseInput::~MouseInput()
+void MouseInput::AddListener(IMouseListener* listener, const std::string& type)
 {
-	_cursorPosListeners.clear();
-}
-
-void MouseInput::addListener(IMouseListener* listener, std::string type)
-{
-	std::vector<IMouseListener*>* container;
-	if (type == MOUSE_MOVE) {
-		container = &_cursorPosListeners;
-	}
-	else if (type == MOUSE_BUTTON) {
-		container = &_mouseButtonListeners;
-	}
-	else {
-		container = &_scrollListeners;
+	std::vector<IMouseListener*>* container = GetContainerByType(type);
+	if (!container) {
+		return;
 	}
 
 	if (std::find(container->begin(), container->end(), listener) == container->end())
@@ -41,28 +23,52 @@ void MouseInput::addListener(IMouseListener* listener, std::string type)
 	}
 }
 
-void MouseInput::onMouseMove(double xpos, double ypos)
-{
-	for (IMouseListener* listener : _cursorPosListeners)
-	{
-		listener->handleMouseMove(xpos, ypos);
+void MouseInput::RemoveListener(IMouseListener* listener, const std::string& type) {
+	std::vector<IMouseListener*>* container = GetContainerByType(type);
+	if (!container) {
+		return;
 	}
-	_mouseX = xpos;
-	_mouseY = ypos;
+	std::erase(*container, listener);
 }
 
-void MouseInput::onMouseButton(int button, int action)
+void MouseInput::OnMouseMove(double xPos, double yPos)
 {
-	for (IMouseListener* listener : _mouseButtonListeners)
+	_mouseX = xPos;
+	_mouseY = yPos;
+	auto listCopy = _cursorPosListeners;
+	for (IMouseListener* listener : listCopy)
 	{
-		listener->handleMouseButton(button, action);
+		listener->HandleMouseMove(xPos, yPos);
 	}
 }
 
-void MouseInput::onMouseScroll(double xoffset, double yoffset)
+void MouseInput::OnMouseButton(int button, int action)
 {
-	for (IMouseListener* listener : _scrollListeners)
+	auto listCopy = _mouseButtonListeners;
+	for (IMouseListener* listener : listCopy)
 	{
-		listener->handleMouseScroll(xoffset, yoffset);
+		listener->HandleMouseButton(button, action);
 	}
+}
+
+void MouseInput::OnMouseScroll(double xOffset, double yOffset)
+{
+	auto listCopy = _scrollListeners;
+	for (IMouseListener* listener : listCopy)
+	{
+		listener->HandleMouseScroll(xOffset, yOffset);
+	}
+}
+
+std::vector<IMouseListener*>* MouseInput::GetContainerByType(const std::string &type) {
+	if (type == MOUSE_MOVE) {
+		return &_cursorPosListeners;
+	}
+	if (type == MOUSE_BUTTON) {
+		return &_mouseButtonListeners;
+	}
+	if (type == MOUSE_SCROLL) {
+		return &_scrollListeners;
+	}
+	return nullptr;
 }

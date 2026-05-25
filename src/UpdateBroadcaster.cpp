@@ -3,19 +3,22 @@
 #include <iostream>
 #include "events/IUpdateListener.h"
 
-std::vector<IUpdateListener*> UpdateBroadcaster::listeners;
-
-void UpdateBroadcaster::addListener(IUpdateListener* listener)
+void UpdateBroadcaster::AddListener(IUpdateListener* listener)
 {
-	if (std::find(listeners.begin(), listeners.end(), listener) == listeners.end()) {
-		listeners.push_back(listener);
+	if (std::find(_listeners.begin(), _listeners.end(), listener) == _listeners.end()) {
+		_listeners.push_back(listener);
 	}
 }
 
-void UpdateBroadcaster::update(float deltaTime)
+void UpdateBroadcaster::RemoveListener(IUpdateListener *listener) {
+	std::erase(_listeners, listener);
+}
+
+void UpdateBroadcaster::Update(float deltaTime)
 {
-	for (IUpdateListener* listener : UpdateBroadcaster::listeners)
+	auto listCopy = _listeners;
+	for (auto& listener : listCopy)
 	{
-		listener->handleUpdate(deltaTime);
+		listener->HandleUpdate(deltaTime);
 	}
 }

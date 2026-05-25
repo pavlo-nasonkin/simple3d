@@ -1,23 +1,13 @@
 #pragma once
-#ifndef FreeLookCamera_h__
-#define FreeLookCamera_h__
+
 #include "GLEWImporter.h"
 #include "Camera.h"
-
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "events/IMouseListener.h"
 
 class FreeLookCamera: public Camera, IMouseListener
 {
-private:
-	bool _cameraDrag = false;
-	bool _cameraRotate = false;
-
-	double _startX = 0.0;
-	double _startY = 0.0;
-	double _rotationOrbitRadius = 3.0f;
 public:
 	FreeLookCamera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f),
 		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
@@ -29,12 +19,18 @@ public:
 	
 	~FreeLookCamera() override;
 	glm::mat4 GetViewMatrix() override;
-	void handleMouseButton(int button, int action) override;
-	void handleMouseMove(double xpos, double ypos) override;
-	void handleMouseScroll(double xoffset, double yoffset) override;
-protected:
-private:
-	
-};
+	void HandleMouseButton(int button, int action) override;
+	void HandleMouseMove(double xpos, double ypos) override;
+	void HandleMouseScroll(double xoffset, double yoffset) override;
 
-#endif // FreeLookCamera_h__
+private:
+	void SubscribeToEvents();
+	void UnsubscribeFromEvents();
+
+	bool _cameraDrag = false;
+	bool _cameraRotate = false;
+
+	double _startX = 0.0;
+	double _startY = 0.0;
+	double _rotationOrbitRadius = 3.0f;
+};

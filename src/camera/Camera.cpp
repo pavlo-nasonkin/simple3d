@@ -37,9 +37,9 @@ glm::mat4 Camera::GetViewMatrix()
 	return glm::lookAt(this->Position, this->Position + this->Front, this->Up);
 }
 
-void Camera::buildProjectionMatrix(float screenW, float screenH, float fow, float near, float far)
+void Camera::buildProjectionMatrix(float fow, float near, float far)
 {
-	_projectionMatrix = glm::perspective(fow, screenW / screenH, near, far);
+	_projectionMatrix = glm::perspective(fow, _screenWidth / _screenHeight, near, far);
 }
 
 void Camera::updateCameraVectors()

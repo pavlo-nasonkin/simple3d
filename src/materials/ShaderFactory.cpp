@@ -10,11 +10,11 @@
 #include <algorithm>
 #include <memory>
 
-std::map<std::string, ShaderInfo> ShaderFactory::_vertexShaders;
-std::map<std::string, ShaderInfo> ShaderFactory::_fragmentShaders;
-std::map<std::string, std::shared_ptr<Shader>> ShaderFactory::_programs;
+std::map<std::string, ShaderInfo, std::less<>> ShaderFactory::_vertexShaders;
+std::map<std::string, ShaderInfo, std::less<>> ShaderFactory::_fragmentShaders;
+std::map<std::string, std::shared_ptr<Shader>, std::less<>> ShaderFactory::_programs;
 
-std::shared_ptr<Shader> ShaderFactory::getShader(std::string vertShaderPath, std::string fragShaderPath)
+std::shared_ptr<Shader> ShaderFactory::getShader(std::string_view vertShaderPath, std::string_view fragShaderPath)
 {
 	//search in map
 	GLuint vertex = getFromCacheOrCreate(GL_VERTEX_SHADER, vertShaderPath);
@@ -42,58 +42,42 @@ std::shared_ptr<Shader> ShaderFactory::getShader(std::string vertShaderPath, std
         shader->setOriginalFragmentSource(fragIter->second.code);
     }
 
-	_programs.insert({ key, shader });
-
+	_programs.emplace(std::move(key), shader);
 	return shader;
 
 }
 
-GLuint ShaderFactory::getFromCacheOrCreate(int type, std::string path)
+GLuint ShaderFactory::getFromCacheOrCreate(int type, std::string_view path)
 {
-    std::map<std::string, ShaderInfo>* container = nullptr;
-	if (type == GL_VERTEX_SHADER) {
-		container = &_vertexShaders;
+	auto* container = (type == GL_VERTEX_SHADER) ? &_vertexShaders
+					: (type == GL_FRAGMENT_SHADER) ? &_fragmentShaders
+					: nullptr;
+	if (!container) {
+		throw std::runtime_error("ShaderFactory::getFromCacheOrCreate invalid shader type");
 	}
-	else if (type == GL_FRAGMENT_SHADER) {
-		container = &_fragmentShaders;
-	}
-
-	if (container == nullptr) {
-		throw "haderFactory::getFromCacheOrCreate invalid shader type";
+	if (auto it = container->find(path); it != container->end()) {
+		return it->second.shaderId;
 	}
 
-
-    GLuint shaderId = 0;
-
-	auto mapIterator = container->find(path);
-	if (mapIterator == container->end()) {
-
-        std::string shaderCode = FileUtils::readFile(path);
-        const GLchar* shaderCodeCStr = shaderCode.c_str();
-        int creationStatus = 0;
-        shaderId = createShaderFromSource(type, &shaderCodeCStr, creationStatus);
-        if (creationStatus != 0){
-            std::cout << "shader creation failed\n" << path << std::endl;
-        }
-        container->insert({ path, {shaderId, shaderCode} });
+	std::string pathStr(path);
+	std::string code = FileUtils::readFile(pathStr);
+	const GLchar* src = code.c_str();
+	int status = 0;
+	GLuint id = createShaderFromSource(type, &src, status);
+	if (status != 0) {
+		std::cout << "shader creation failed\n" << pathStr << std::endl;
 	}
-	else {
-        shaderId = mapIterator->second.shaderId;
-	}
-
-    return shaderId;
+	container->emplace(std::move(pathStr), ShaderInfo{id, std::move(code)});
+	return id;
 }
-
-
 
 GLuint ShaderFactory::createShaderFromSource(int type, const GLchar** source, int& status)
 {
-	GLuint shaderId;
 	GLint success;
 	GLchar infoLog[512];
 
 	// Vertex Shader
-	shaderId = glCreateShader(type);
+	GLuint shaderId = glCreateShader(type);
 	glShaderSource(shaderId, 1, source, NULL);
 	glCompileShader(shaderId);
 	// Print compile errors if any

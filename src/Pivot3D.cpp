@@ -2,11 +2,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Shader.h"
 #include <algorithm>
-#include <exception>
-#include "Device3D.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 unsigned int Pivot3D::_idCounter = 0;
 const std::string Pivot3DEvent::CHILDREN_CHANGED = "childrenChanged";
@@ -14,20 +11,17 @@ const std::string Pivot3DEvent::CHILDREN_CHANGED = "childrenChanged";
 Pivot3D::Pivot3D(): _scale(1.0f,1.0f,1.0f),
                     _id(_idCounter++)
 {
-//	_scale.x = 1.0f;
-//	_scale.y = 1.0f;
-//	_scale.z = 1.0f;
-//	_id = _idCounter++;
+
 }
 
 
 Pivot3D::~Pivot3D()
 {
     _parent.reset();
-    removeChildren();
+    RemoveChildren();
 }
 
-void Pivot3D::init()
+void Pivot3D::Init()
 {
 
 }
@@ -42,21 +36,21 @@ glm::mat4 Pivot3D::LocalMatrix() const {
 	return m;
 }
 
-void Pivot3D::addChild(std::shared_ptr<Pivot3D> child)
+void Pivot3D::AddChild(std::shared_ptr<Pivot3D> child)
 {
 	if (child == nullptr) {
-		throw "Child is nullptr";
+		throw std::invalid_argument("Child is nullptr");
 	}
 
     if (!child->_parent.expired()) {
-        child->_parent.lock()->removeChild(child);
+        child->_parent.lock()->RemoveChild(child);
 	}
 	_children.push_back(child);
     child->_parent = shared_from_this();
     dispatchEvent(Pivot3DEvent::CHILDREN_CHANGED);
 }
 
-void Pivot3D::removeChild(std::shared_ptr<Pivot3D> child)
+void Pivot3D::RemoveChild(std::shared_ptr<Pivot3D> child)
 {
     auto removed_iterator = std::remove(_children.begin(), _children.end(), child);
     if (removed_iterator != _children.end())
@@ -67,7 +61,7 @@ void Pivot3D::removeChild(std::shared_ptr<Pivot3D> child)
     }
 }
 
-void Pivot3D::removeChildren()
+void Pivot3D::RemoveChildren()
 {
     auto empty = _children.empty();
 	_children.clear();
@@ -77,48 +71,48 @@ void Pivot3D::removeChildren()
     }
 }
 
-const pivots_list& Pivot3D::children()
+const pivots_list& Pivot3D::Children()
 {
     return _children;
 }
 
-void Pivot3D::render(const RenderContext &ctx, MaterialBase* material /*= nullptr*/)
+void Pivot3D::Render(const RenderContext &ctx, MaterialBase* material /*= nullptr*/)
 {
 	RenderContext context = ctx;
 
 	context.model = ctx.model * LocalMatrix();
     for (auto child : _children)
     {
-        child->render(context, material);
+        child->Render(context, material);
     }
 }
 
-void Pivot3D::setPosition(float x, float y, float z)
+void Pivot3D::SetPosition(float x, float y, float z)
 {
 	_position.x = x;
 	_position.y = y;
 	_position.z = z;
 }
 
-void Pivot3D::setRotation(float x, float y, float z)
+void Pivot3D::SetRotation(float x, float y, float z)
 {
 	_rotation.x = x;
 	_rotation.y = y;
 	_rotation.z = z;
 }
 
-void Pivot3D::setScale(float x, float y, float z)
+void Pivot3D::SetScale(float x, float y, float z)
 {
 	_scale.x = x;
 	_scale.y = y;
 	_scale.z = z;
 }
 
-void Pivot3D::translate(float /*x*/, float /*y*/, float /*z*/)
+void Pivot3D::Translate(float /*x*/, float /*y*/, float /*z*/)
 {
 }
 
-void Pivot3D::rotate(float x, float y, float z)
+void Pivot3D::Rotate(float x, float y, float z)
 {
 	_rotation.x += x;
 	_rotation.y += y;
@@ -126,15 +120,15 @@ void Pivot3D::rotate(float x, float y, float z)
 	// this->_model = glm::rotate(_model, angle, glm::vec3(x, y, z));
 }
 
-void Pivot3D::scale(float /*x*/, float /*y*/, float /*z*/)
+void Pivot3D::Scale(float /*x*/, float /*y*/, float /*z*/)
 {
 }
 
-std::shared_ptr<Pivot3D> Pivot3D::getChildById(unsigned int id, bool recursive /*= true*/)
+std::shared_ptr<Pivot3D> Pivot3D::GetChildById(unsigned int id, bool recursive /*= true*/)
 {
     for (auto child : _children)
 	{
-        if (child->getId() == id)
+        if (child->GetId() == id)
 		{
 			return child;
 		}
@@ -143,7 +137,7 @@ std::shared_ptr<Pivot3D> Pivot3D::getChildById(unsigned int id, bool recursive /
 	if (recursive) {
         for (auto child : _children)
 		{
-            auto found = child->getChildById(id, true);
+            auto found = child->GetChildById(id, true);
             if (found) {
 				return found;
 			}
@@ -152,7 +146,7 @@ std::shared_ptr<Pivot3D> Pivot3D::getChildById(unsigned int id, bool recursive /
     return nullptr;
 }
 
-std::shared_ptr<Pivot3D> Pivot3D::getChildAt(unsigned int pos)
+std::shared_ptr<Pivot3D> Pivot3D::GetChildAt(unsigned int pos)
 {
     if (_children.size() > pos)
     {
@@ -161,22 +155,22 @@ std::shared_ptr<Pivot3D> Pivot3D::getChildAt(unsigned int pos)
     return nullptr;
 }
 
-unsigned int Pivot3D::getId() const
+unsigned int Pivot3D::GetId() const
 {
 	return _id;
 }
 
-void Pivot3D::setId(unsigned int id)
+void Pivot3D::SetId(unsigned int id)
 {
 	_id = id;
 }
 
-std::string Pivot3D::name() const
+std::string Pivot3D::Name() const
 {
     return _name;
 }
 
-void Pivot3D::setName(const std::string &name)
+void Pivot3D::SetName(const std::string &name)
 {
     _name = name;
 }

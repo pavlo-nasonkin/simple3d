@@ -1,6 +1,4 @@
 #pragma once
-#ifndef PIVOT_3D_H
-#define PIVOT_3D_H
 
 #include <vector>
 #include <glm/glm.hpp>
@@ -36,35 +34,33 @@ protected:
 public:
 	Pivot3D();
 	~Pivot3D() override;
-    virtual void init();
-    void addChild(std::shared_ptr<Pivot3D> child);
-    void removeChild(std::shared_ptr<Pivot3D> child);
-	void removeChildren();
-    const pivots_list& children();
+    virtual void Init();
+    void AddChild(std::shared_ptr<Pivot3D> child);
+    void RemoveChild(std::shared_ptr<Pivot3D> child);
+	void RemoveChildren();
+    const pivots_list& Children();
 //    std::vector<Mesh*>& meshes();
-    virtual void render(const RenderContext &ctx, MaterialBase* material = nullptr);
-	void setPosition(float x, float y, float z);
-	void setRotation(float x, float y, float z);
-	void setScale(float x, float y, float z);
-	const glm::vec3* getPosition() const { return &_position; }
-	const glm::vec3* getRotation() const { return &_rotation; }
-	const glm::vec3* getScale() const { return &_scale; }
+    virtual void Render(const RenderContext &ctx, MaterialBase* material = nullptr);
+	void SetPosition(float x, float y, float z);
+	void SetRotation(float x, float y, float z);
+	void SetScale(float x, float y, float z);
+	const glm::vec3* GetPosition() const { return &_position; }
+	const glm::vec3* GetRotation() const { return &_rotation; }
+	const glm::vec3* GetScale() const { return &_scale; }
 
-	void translate(float x, float y, float z);
-	void rotate(float x, float y, float z);
-	void scale(float x, float y, float z);
+	void Translate(float x, float y, float z);
+	void Rotate(float x, float y, float z);
+	void Scale(float x, float y, float z);
 	
-    std::shared_ptr<Pivot3D> getChildById(unsigned int id, bool recursive = true);
-    std::shared_ptr<Pivot3D> getChildAt(unsigned int pos);
+    std::shared_ptr<Pivot3D> GetChildById(unsigned int id, bool recursive = true);
+    std::shared_ptr<Pivot3D> GetChildAt(unsigned int pos);
 
-	unsigned int getId() const;
-	void setId(unsigned int id);
+	unsigned int GetId() const;
+	void SetId(unsigned int id);
 
-    std::string name() const;
-    void setName(const std::string &name);
+    std::string Name() const;
+    void SetName(const std::string &name);
 
 protected:
 	glm::mat4 LocalMatrix() const;
 };
-
-#endif // !PIVOT_3D_H

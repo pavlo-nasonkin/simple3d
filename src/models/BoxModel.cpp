@@ -1,18 +1,14 @@
 #include "BoxModel.h"
-
 #include <GL/glew.h>
 #include <glm/gtc/type_ptr.hpp>
-#include "../Engine.h"
-#include "../resources/TextureManager.h"
+#include "Engine.h"
+#include "resources/TextureManager.h"
 #include <string>
-#include "../materials/ShaderFactory.h"
-#include "../Device3D.h"
-#include "../materials/Material3D.h"
-#include "../materials/ColorMaterial.h"
-#include "../materials/filters/ColorFilter.h"
+#include "materials/ShaderFactory.h"
+#include "materials/Material3D.h"
+#include "materials/filters/ColorFilter.h"
 
-BoxModel::BoxModel():
-    Model()
+BoxModel::BoxModel()
 {
 }
 
@@ -20,9 +16,9 @@ BoxModel::~BoxModel()
 {
 }
 
-void BoxModel::init()
+void BoxModel::Init()
 {
-    addChild(processMesh());
+    AddChild(processMesh());
 }
 
 std::shared_ptr<Mesh> BoxModel::processMesh()
@@ -36,7 +32,7 @@ std::shared_ptr<Mesh> BoxModel::processMesh()
     mat->addFilter(colorFilter);
     mat->build();
     auto mesh = std::make_shared<Mesh>(boxVertices, boxIndices, mat, std::vector<VertexBoneData>());
-    mesh->setName(std::string("Box") + std::to_string(mesh->getId()));
+    mesh->SetName(std::string("Box") + std::to_string(mesh->GetId()));
     return mesh;
 }
 

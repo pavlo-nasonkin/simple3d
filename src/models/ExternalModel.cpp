@@ -3,32 +3,28 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include "../resources/Texture2D.h"
-#include "../resources/TextureManager.h"
-#include "../Engine.h"
+#include "resources/Texture2D.h"
+#include "resources/TextureManager.h"
+#include "Engine.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/glm.hpp>
-#include "../materials/ShaderFactory.h"
-#include "../materials/ColorMaterial.h"
-#include "../materials/filters/TextureMapFilter.h"
-#include "../Device3D.h"
-#include "../Scene3D.h"
-#include "../utils/Math3d.h"
+#include "materials/filters/TextureMapFilter.h"
+#include "Scene3D.h"
+#include "utils/Math3d.h"
 
 ExternalModel::ExternalModel(const std::string& path):
-    Pivot3D(),
     _path(path)
 {
     _name = "ExternalModel";
     _transforms = std::make_shared<std::vector<Matrix4f>>();
 }
 
-void ExternalModel::render(const RenderContext& ctx, MaterialBase* material /*= nullptr*/)
+void ExternalModel::Render(const RenderContext& ctx, MaterialBase* material /*= nullptr*/)
 {
     if (_scene) {
-        BoneTransform(Engine::getTimerSec(), _transforms);
+        BoneTransform(Engine::GetInstance().GetTimerSec(), _transforms);
     }
-    Pivot3D::render(ctx, material);
+    Pivot3D::Render(ctx, material);
 }
 
 ExternalModel::~ExternalModel()
@@ -36,7 +32,7 @@ ExternalModel::~ExternalModel()
 
 }
 
-void ExternalModel::init()
+void ExternalModel::Init()
 {
     loadModel(_path);
 }
@@ -63,7 +59,7 @@ void ExternalModel::processNode(aiNode * node, const aiScene * scene)
     for (GLuint i = 0; i < node->mNumMeshes; i++)
     {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        addChild(processMesh(mesh, scene));
+        AddChild(processMesh(mesh, scene));
     }
     // Then do the same for each of its children
     for (GLuint i = 0; i < node->mNumChildren; i++)
@@ -166,7 +162,7 @@ std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * 
 
     mat->build();
     auto m = std::make_shared<Mesh>(vertices, indices, mat, bones);
-    m->setName(mesh->mName.C_Str());
+    m->SetName(mesh->mName.C_Str());
     return m;
 }
 
@@ -179,7 +175,7 @@ std::vector<std::shared_ptr<Texture2D>> ExternalModel::loadMaterialTextures(aiMa
 	{
 		aiString texturePath;
 		mat->GetTexture(type, i, &texturePath);
-        auto texture = Engine::textureManager->getTexture(texturePath.C_Str(), typeName, _directory);
+        auto texture = Engine::GetInstance().GetTextureManager()->getTexture(texturePath.C_Str(), typeName, _directory);
 		if (texture != nullptr) {
 			textures.push_back(texture);
 		}

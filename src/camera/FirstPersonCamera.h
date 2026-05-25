@@ -14,6 +14,7 @@
 #include "UpdateBroadcaster.h"
 #include "events/IMouseListener.h"
 #include "input/MouseInput.h"
+#include "Engine.h"
 #include "Camera.h"
 
 
@@ -53,19 +54,23 @@ public:
 		GLfloat pitch = Camera::PITCH) 
 		: Camera(position, up, yaw, pitch), MovementSpeed(SPEED), MouseSensitivity(SENSITIVTY)
 	{
-		UpdateBroadcaster::addListener(this);
-		MouseInput::addListener(this, MouseInput::MOUSE_MOVE);
+		Engine::GetInstance().GetUpdateBroadcaster()->AddListener(this);
+		Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_MOVE);
 	}
 	// Constructor with scalar values
 	FirstPersonCamera(GLfloat posX, GLfloat posY, GLfloat posZ, GLfloat upX, GLfloat upY, GLfloat upZ, GLfloat yaw, GLfloat pitch) 
 		: Camera(posX, posY, posZ, upX, upY, upZ, yaw, pitch), 
 		MovementSpeed(SPEED), MouseSensitivity(SENSITIVTY)
 	{
-		UpdateBroadcaster::addListener(this);
-		MouseInput::addListener(this, MouseInput::MOUSE_MOVE);
+		Engine::GetInstance().GetUpdateBroadcaster()->AddListener(this);
+		Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_MOVE);
 	}
 
-	~FirstPersonCamera() override = default;
+	~FirstPersonCamera() override
+	{
+		Engine::GetInstance().GetUpdateBroadcaster()->RemoveListener(this);
+		Engine::GetInstance().GetMouseInput()->RemoveListener(this, MouseInput::MOUSE_MOVE);
+	};
 
 	// Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
 	void ProcessKeyboard(Camera_Movement direction, GLfloat deltaTime)
@@ -118,20 +123,31 @@ public:
 			this->Zoom = 45.0f;
 	}
 
-	void handleUpdate(float deltaTime) override
+	void HandleUpdate(float deltaTime) override
 	{
-		if (KeyboardInput::isKeyPressed(GLFW_KEY_W))
+		if (Engine::GetInstance().GetKeyboardInput()->IsKeyPressed(GLFW_KEY_W))
+		{
 			ProcessKeyboard(Camera_Movement::FORWARD, deltaTime);
-		if (KeyboardInput::isKeyPressed(GLFW_KEY_S))
+		}
+
+		if (Engine::GetInstance().GetKeyboardInput()->IsKeyPressed(GLFW_KEY_S))
+		{
 			ProcessKeyboard(Camera_Movement::BACKWARD, deltaTime);
-		if (KeyboardInput::isKeyPressed(GLFW_KEY_A))
+		}
+
+		if (Engine::GetInstance().GetKeyboardInput()->IsKeyPressed(GLFW_KEY_A))
+		{
 			ProcessKeyboard(Camera_Movement::LEFT, deltaTime);
-		if (KeyboardInput::isKeyPressed(GLFW_KEY_D))
+		}
+
+		if (Engine::GetInstance().GetKeyboardInput()->IsKeyPressed(GLFW_KEY_D))
+		{
 			ProcessKeyboard(Camera_Movement::RIGHT, deltaTime);
+		}
 	}
 
 
-	void handleMouseMove(double xpos, double ypos) override
+	void HandleMouseMove(double xpos, double ypos) override
 	{
 		if (_firstMouse)
 		{

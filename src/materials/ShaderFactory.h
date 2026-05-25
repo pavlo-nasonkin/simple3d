@@ -1,6 +1,4 @@
 #pragma once
-#ifndef ShaderFactory_h__
-#define ShaderFactory_h__
 
 #include <string>
 #include <map>
@@ -16,16 +14,13 @@ struct ShaderInfo
 
 class ShaderFactory
 {
-private:
-    static std::map<std::string, ShaderInfo> _vertexShaders;
-    static std::map<std::string, ShaderInfo> _fragmentShaders;
-    static std::map<std::string, std::shared_ptr<Shader>> _programs;
+    static std::map<std::string, ShaderInfo, std::less<>> _vertexShaders;
+    static std::map<std::string, ShaderInfo, std::less<>> _fragmentShaders;
+    static std::map<std::string, std::shared_ptr<Shader>, std::less<>> _programs;
 public:
-    static std::shared_ptr<Shader> getShader(std::string vertShader, std::string fragShader);
+    static std::shared_ptr<Shader> getShader(std::string_view vertShader, std::string_view fragShader);
 	
 private:
-	static GLuint getFromCacheOrCreate(int type, std::string path);
+	static GLuint getFromCacheOrCreate(int type, std::string_view path);
     static GLuint createShaderFromSource(int type, const GLchar **source, int& status);
 };
-
-#endif // ShaderFactory_h__

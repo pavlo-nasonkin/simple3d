@@ -30,9 +30,9 @@ class ExternalModel: public Pivot3D
 public:
 	/*  Functions   */
     ExternalModel(const std::string& path);
-    void render(const RenderContext &ctx, MaterialBase* material) override;
+    void Render(const RenderContext &ctx, MaterialBase* material) override;
 	~ExternalModel() override;
-    void init() override;
+    void Init() override;
 
 private:
 	/*  Model Data  */

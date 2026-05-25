@@ -2,35 +2,36 @@
 #include "events/IKeyboardListener.h"
 #include <algorithm>
 
-std::vector<bool> KeyboardInput::_keys = std::vector<bool>(1024, false);
-std::vector<IKeyboardListener*> KeyboardInput::_listeners;
-
 KeyboardInput::KeyboardInput()
 {
 }
 
-KeyboardInput::~KeyboardInput()
-{
-}
-
-void KeyboardInput::addListener(IKeyboardListener* listener)
+void KeyboardInput::AddListener(IKeyboardListener* listener)
 {
 	if (std::find(_listeners.begin(), _listeners.end(), listener) == _listeners.end()) {
 		_listeners.push_back(listener);
 	}
 }
 
-bool KeyboardInput::isKeyPressed(int key)
-{
-	return _keys[key];
+void KeyboardInput::RemoveListener(IKeyboardListener *listener) {
+	std::erase(_listeners, listener);
 }
 
-void KeyboardInput::onKeyAction(int key, int action)
+bool KeyboardInput::IsKeyPressed(int key) const
 {
+	return key >= 0 && key < static_cast<int>(_keys.size()) && _keys[key];
+}
 
-	for (IKeyboardListener* listener : _listeners)
+void KeyboardInput::OnKeyAction(int key, int action)
+{
+	if (key < 0 || key >= static_cast<int>(_keys.size())) {
+		return;
+	}
+
+	auto listCopy = _listeners;
+	for (IKeyboardListener* listener : listCopy)
 	{
-		listener->handleKeyInput(key, action);
+		listener->HandleKeyInput(key, action);
 	}
 
 	if (action == ACTION_PRESS)

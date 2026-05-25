@@ -24,17 +24,30 @@ public:
 
 	GLfloat Zoom;
 	bool ZoomChanged;
+
 private:
 	glm::mat4 _projectionMatrix;
+
+protected:
+	float _screenWidth = 1280.0f;
+	float _screenHeight = 720.0f;
+
 public:
 	Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), GLfloat yaw = YAW, GLfloat pitch = PITCH);
 	Camera(GLfloat posX, GLfloat posY, GLfloat posZ, GLfloat upX, GLfloat upY, GLfloat upZ, GLfloat yaw, GLfloat pitch);
 	virtual ~Camera() = default;
 	// Returns the view matrix calculated using Euler Angles and the LookAt Matrix
 	virtual glm::mat4 GetViewMatrix();
-	virtual void buildProjectionMatrix(float screenW, float screenH, float fow, float near, float far);
+	virtual void buildProjectionMatrix(float fow, float near, float far);
 
 	const glm::mat4& getProjectionMatrix() const { return _projectionMatrix; };
+
+	float GetScreenWidth() const { return _screenWidth; }
+	void SetScreenWidth(float val) { _screenWidth = val; }
+
+	float GetScreenHeight() const { return _screenHeight; }
+	void SetScreenHeight(float val) { _screenHeight = val; }
+
 protected:
 	// Calculates the front vector from the Camera's (updated) Euler Angles
 	void updateCameraVectors();

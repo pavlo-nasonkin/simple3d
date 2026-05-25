@@ -1,23 +1,20 @@
-#include "../materials/Material3D.h"
-#include "../GLEWImporter.h"
-#include "../Shader.h"
-#include "../resources/Texture2D.h"
+#include "materials/Material3D.h"
+#include "GLEWImporter.h"
+#include "Shader.h"
+#include "resources/Texture2D.h"
 #include <glm/gtc/type_ptr.hpp>
-
-#include "Engine.h"
-#include "../Device3D.h"
-#include "../Scene3D.h"
-#include "../camera/Camera.h"
+#include "Scene3D.h"
+#include "camera/Camera.h"
 #include "Filter3d.h"
-#include "../utils/StringUtils.h"
+#include "utils/StringUtils.h"
 
-Material3D::Material3D(std::shared_ptr<Shader> shader)
+Material3D::Material3D(const std::shared_ptr<Shader>& shader)
     :MaterialBase(shader)
 {
 
 }
 
-filters_list Material3D::getFilters() const
+const Material3D::FiltersList& Material3D::getFilters() const
 {
     return _filters;
 }
@@ -136,8 +133,6 @@ void Material3D::bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
 	glUniform1f(glGetUniformLocation(_shader->Program, "material.shininess"), 16.0f);
 }
 
-
-
 void Material3D::unbind()
 {
 	MaterialBase::unbind();
@@ -155,11 +150,6 @@ void Material3D::addFilter(std::shared_ptr<Filter3D> filter)
     {
         _filters.push_back(filter);
     }
-}
-
-Material3D::~Material3D()
-{
-	
 }
 
 std::shared_ptr<MaterialBase> Material3D::clone() const

@@ -29,7 +29,7 @@ protected:
     std::shared_ptr<Shader> _shader;
     CullFaceMode _cullFace;
 public:
-    MaterialBase(std::shared_ptr<Shader> shader);
+    MaterialBase(const std::shared_ptr<Shader>& shader);
 	virtual ~MaterialBase();
     virtual void build();
 	virtual void bind(const RenderContext& ctx, const Mesh* mesh = nullptr);

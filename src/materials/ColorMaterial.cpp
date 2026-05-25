@@ -1,19 +1,12 @@
 #include "ColorMaterial.h"
 #include "GLEWImporter.h"
 #include "Shader.h"
-#include "Device3D.h"
-#include "Engine.h"
 #include "camera/Camera.h"
 #include "Scene3D.h"
 
-ColorMaterial::ColorMaterial(std::shared_ptr<Shader> shader)
+ColorMaterial::ColorMaterial(const std::shared_ptr<Shader>& shader)
 	:MaterialBase(shader)
 {
-}
-
-ColorMaterial::~ColorMaterial()
-{
-
 }
 
 void ColorMaterial::bind(const RenderContext& ctx, const Mesh* mesh/*=nullptr*/)

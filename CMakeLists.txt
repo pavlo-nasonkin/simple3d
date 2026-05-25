@@ -57,8 +57,6 @@ set(SOURCE_FILES
         src/utils/StringUtils.cpp
         src/models/BoxModel.cpp
         src/models/BoxModel.h
-        src/Device3D.cpp
-        src/Device3D.h
         src/Engine.cpp
         src/Engine.h
         src/models/ExternalModel.cpp
@@ -81,10 +79,10 @@ set(SOURCE_FILES
         src/UpdateBroadcaster.cpp
         src/UpdateBroadcaster.h
         src/GLEWImporter.h
-        GLFWKeyboardInput.cpp
-        GLFWKeyboardInput.h
-        GLFWMouseInput.cpp
-        GLFWMouseInput.h
+        src/input/GLFWKeyboardInput.cpp
+        src/input/GLFWKeyboardInput.h
+        src/input/GLFWMouseInput.cpp
+        src/input/GLFWMouseInput.h
         include/GL/glew.c
         main.cpp)
 

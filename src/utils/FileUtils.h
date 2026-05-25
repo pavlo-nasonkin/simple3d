@@ -6,7 +6,7 @@
 class FileUtils
 {
 public:
-	static std::string readFile(std::string path);
+	static std::string readFile(const std::string& path);
 };
 
 #endif // FileUtils_h__

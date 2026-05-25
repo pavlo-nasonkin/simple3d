@@ -61,5 +61,5 @@ CullFaceMode MaterialsHelper::stringToCullFace(const std::string &cullFace)
     else if (cullFace == "None")
         return CullFaceMode::none;
 
-    throw "illegal cullface mode";
+    throw std::invalid_argument("illegal cullface mode");
 }
