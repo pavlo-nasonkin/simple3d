@@ -11,8 +11,8 @@ public:
     SkinnedMaterial3D(std::shared_ptr<Shader> shader);
     ~SkinnedMaterial3D() override;
     void SetBoneTransform(unsigned int Index, const Matrix4f& Transform);
-    void bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
-    std::shared_ptr<MaterialBase> clone() const override;
+    void Bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
+    std::shared_ptr<MaterialBase> Clone() const override;
 };
 
 #endif // SKINNEDMATERIAL3D_H

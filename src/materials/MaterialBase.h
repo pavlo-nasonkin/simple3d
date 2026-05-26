@@ -31,9 +31,9 @@ protected:
 public:
     MaterialBase(const std::shared_ptr<Shader>& shader);
 	virtual ~MaterialBase();
-    virtual void build();
-	virtual void bind(const RenderContext& ctx, const Mesh* mesh = nullptr);
-	virtual void unbind();
+    virtual void Build();
+	virtual void Bind(const RenderContext& ctx, const Mesh* mesh = nullptr);
+	virtual void Unbind();
     std::string name() const;
     void setName(const std::string &name);
 
@@ -45,7 +45,7 @@ public:
 
     void setCullFace(const CullFaceMode& cullFace);
     CullFaceMode cullFace() const;
-    virtual std::shared_ptr<MaterialBase> clone() const;
+    virtual std::shared_ptr<MaterialBase> Clone() const;
 
 
 protected:

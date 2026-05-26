@@ -20,16 +20,16 @@ void SkinnedMaterial3D::SetBoneTransform(unsigned int Index, const Matrix4f &Tra
     glUniformMatrix4fv(boneLocation, 1, GL_TRUE, (const GLfloat*)Transform.m);
 }
 
-void SkinnedMaterial3D::bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
+void SkinnedMaterial3D::Bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
 {
-    Material3D::bind(ctx, mesh);
+    Material3D::Bind(ctx, mesh);
 
     for (unsigned int i = 0 ; i < transforms->size() ; i++) {
         SetBoneTransform(i, transforms->at(i));
     }
 }
 
-std::shared_ptr<MaterialBase> SkinnedMaterial3D::clone() const
+std::shared_ptr<MaterialBase> SkinnedMaterial3D::Clone() const
 {
     auto result = std::make_shared<SkinnedMaterial3D>(*this);
     result->setId(_idCounter);

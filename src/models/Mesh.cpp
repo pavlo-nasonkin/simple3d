@@ -5,8 +5,7 @@
 #include "utils/Math3d.h"
 #include <glm/gtc/matrix_transform.hpp>
 
-Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::shared_ptr<MaterialBase>& mat, const std::vector<VertexBoneData>& bones)
-    :Pivot3D(),
+Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::shared_ptr<MaterialBase>& mat, const std::vector<VertexBoneData>& bones) :
     _vertices(vertices),
     _indices(indices),
     _bones(bones),
@@ -15,7 +14,11 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indic
     _hasBones = !bones.empty();
     _name = "Mesh";
 	// Now that we have all the required data, set the vertex buffers and its attribute pointers.
-	setupMesh();
+	SetupMesh();
+}
+
+Mesh::~Mesh() {
+
 }
 
 // Render the mesh
@@ -28,11 +31,11 @@ void Mesh::Render(const RenderContext &ctx, MaterialBase* material)
         material = _material.get();
     }
 
-    material->bind(context, this);
+    material->Bind(context, this);
     glBindVertexArray(vertexAttributesArray);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(_indices.size()), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
-    material->unbind();
+    material->Unbind();
 
     for (auto& child : _children) {
         child->Render(context, material);
@@ -42,7 +45,7 @@ void Mesh::Render(const RenderContext &ctx, MaterialBase* material)
 /*  Functions    */
 // Initializes all the buffer objects/arrays
 
-void Mesh::setupMesh()
+void Mesh::SetupMesh()
 {
     // Create buffers/arrays
     glGenVertexArrays(1, &vertexAttributesArray);
@@ -81,6 +84,8 @@ void Mesh::setupMesh()
         glEnableVertexAttribArray(UV_ID_LOCATION);
         glVertexAttribPointer(UV_ID_LOCATION, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, TexCoords));
 
+        glEnableVertexAttribArray(TANGENT_ID_LOCATION);
+        glVertexAttribPointer(TANGENT_ID_LOCATION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Tangent));
         if (_hasBones)
         {
             glBindBuffer(GL_ARRAY_BUFFER, boneArrayBuffer);
@@ -91,14 +96,13 @@ void Mesh::setupMesh()
 
             glEnableVertexAttribArray(BONE_WEIGHT_LOCATION);
             glVertexAttribPointer(BONE_WEIGHT_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(VertexBoneData), (const GLvoid*)16);
-            std::cout << "BindBones" << std::endl;
         }
 
     }
     glBindVertexArray(0);
 }
 
-std::shared_ptr<MaterialBase> Mesh::material() const
+std::shared_ptr<MaterialBase> Mesh::GetMaterial() const
 {
     return _material;
 }

@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 #include "materials/filters/TextureMapFilter.h"
 #include "Scene3D.h"
+#include "materials/filters/NormalMapFilter.h"
 #include "utils/Math3d.h"
 
 ExternalModel::ExternalModel(const std::string& path):
@@ -34,12 +35,12 @@ ExternalModel::~ExternalModel()
 
 void ExternalModel::Init()
 {
-    loadModel(_path);
+    LoadModel(_path);
 }
 
-void ExternalModel::loadModel(std::string path)
+void ExternalModel::LoadModel(const std::string& path)
 {
-    _scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+    _scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
     if (!_scene || _scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !_scene->mRootNode)
 	{
@@ -50,25 +51,25 @@ void ExternalModel::loadModel(std::string path)
     m_GlobalInverseTransform = _scene->mRootNode->mTransformation;
     m_GlobalInverseTransform.Inverse();
 
-    processNode(_scene->mRootNode, _scene);
+    ProcessNode(_scene->mRootNode, _scene);
 }
 
-void ExternalModel::processNode(aiNode * node, const aiScene * scene)
+void ExternalModel::ProcessNode(aiNode * node, const aiScene * scene)
 {
     // Process all the node's meshes (if any)
     for (GLuint i = 0; i < node->mNumMeshes; i++)
     {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        AddChild(processMesh(mesh, scene));
+        AddChild(ProcessMesh(mesh, scene));
     }
     // Then do the same for each of its children
     for (GLuint i = 0; i < node->mNumChildren; i++)
     {
-        this->processNode(node->mChildren[i], scene);
+        this->ProcessNode(node->mChildren[i], scene);
     }
 }
 
-std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * scene)
+std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 {
     std::vector<Vertex> vertices;
     std::vector<GLuint> indices;
@@ -101,6 +102,14 @@ std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * 
 		{
 			vertex.TexCoords = glm::vec2(0.0f, 0.0f);
 		}
+
+	    if (mesh->mTangents) {
+	        vertex.Tangent.x = mesh->mTangents[i].x;
+	        vertex.Tangent.y = mesh->mTangents[i].y;
+	        vertex.Tangent.z = mesh->mTangents[i].z;
+	    } else {
+	        vertex.Tangent = glm::vec3(1.0f, 0.0f, 0.0f);  // fallback
+	    }
 			
 		vertices.push_back(vertex);
 	}
@@ -123,7 +132,7 @@ std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * 
        skinnedMat->transforms = _transforms;
     }
     else {
-        shader = std::make_shared<Shader>("../assets/shaders/shader.vs", "../assets/shaders/shader.fs");
+        shader = std::make_shared<Shader>("../assets/shaders/shader.vs", "../assets/shaders/defaultColorLight.fs");
         mat = std::make_shared<Material3D>(shader);
     }
 
@@ -136,31 +145,44 @@ std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * 
     if (scene->mNumMaterials > 0)
 	{
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        auto diffuseMaps = loadMaterialTextures(material,
-			aiTextureType_DIFFUSE, "texture_diffuse");
+        static const std::string kTextureDiffuse = "texture_diffuse";
+        auto diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, kTextureDiffuse);
 
-        for (auto tex : diffuseMaps)
+        for (const auto& tex : diffuseMaps)
         {
             auto textureFilter = std::make_shared<TextureMapFilter>(tex);
-            textureFilter->setBlendMode(BlendMode::NORMAL);
-            mat->addFilter(textureFilter);
+            textureFilter->SetSlot(Filter3D::FilterSlot::BaseColor);
+            textureFilter->SetBlendMode(Filter3D::BlendMode::MULTIPLY);
+            mat->AddFilter(textureFilter);
         }
 
-		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-        auto specularMaps = this->loadMaterialTextures(material,
-			aiTextureType_SPECULAR, "texture_specular");
-		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+        static const std::string kTextureSpecular = "texture_specular";
+        auto specularMaps = this->LoadMaterialTextures(material, aiTextureType_SPECULAR, kTextureSpecular);
+        for (const auto& tex : specularMaps) {
+            auto specFilter = std::make_shared<TextureMapFilter>(tex);
+            specFilter->SetSlot(Filter3D::FilterSlot::Specular);
+            specFilter->SetBlendMode(Filter3D::BlendMode::MULTIPLY);
+            mat->AddFilter(specFilter);
+        }
+
+        static const std::string kTextureNormal = "texture_normal";
+        auto normalMaps = this->LoadMaterialTextures(material, aiTextureType_NORMALS, kTextureNormal);
+        for (const auto& tex : normalMaps) {
+            auto normalFilter = std::make_shared<NormalMapFilter>(tex);
+            normalFilter->SetSlot(Filter3D::FilterSlot::Normal);
+            normalFilter->SetBlendMode(Filter3D::BlendMode::NORMAL);
+            mat->AddFilter(normalFilter);
+        }
 	}
 
     if (hasBones)
     {
         //process bones
-        //loadBones(MeshIndex, paiMesh, Bones);
         bones.resize(mesh->mNumVertices);
-        loadBones(0, mesh, bones);
+        LoadBones(0, mesh, bones);
     }
 
-    mat->build();
+    mat->Build();
     auto m = std::make_shared<Mesh>(vertices, indices, mat, bones);
     m->SetName(mesh->mName.C_Str());
     return m;
@@ -168,7 +190,7 @@ std::shared_ptr<Mesh> ExternalModel::processMesh(aiMesh * mesh, const aiScene * 
 
 // Checks all material textures of a given type and loads the textures if they're not loaded yet.
 // The required info is returned as a Texture struct.
-std::vector<std::shared_ptr<Texture2D>> ExternalModel::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
+std::vector<std::shared_ptr<Texture2D>> ExternalModel::LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& typeName)
 {
     std::vector<std::shared_ptr<Texture2D>> textures;
 	for (GLuint i = 0; i < mat->GetTextureCount(type); i++)
@@ -183,7 +205,7 @@ std::vector<std::shared_ptr<Texture2D>> ExternalModel::loadMaterialTextures(aiMa
 	return textures;
 }
 
-void ExternalModel::addBoneData(VertexBoneData& data, unsigned int boneID, float weight)
+void ExternalModel::AddBoneData(VertexBoneData& data, unsigned int boneID, float weight)
 {
     auto size = sizeof(data.IDs)/sizeof(data.IDs[0]);
     for (unsigned int i = 0 ; i < size ; i++) {
@@ -198,7 +220,7 @@ void ExternalModel::addBoneData(VertexBoneData& data, unsigned int boneID, float
     assert(0);
 }
 
-void ExternalModel::loadBones(unsigned int /*MeshIndex*/, const aiMesh* pMesh, std::vector<VertexBoneData>& bones)
+void ExternalModel::LoadBones(unsigned int /*MeshIndex*/, const aiMesh* pMesh, std::vector<VertexBoneData>& bones)
 {
     for (unsigned int i = 0 ; i < pMesh->mNumBones; i++) {
         unsigned int boneIndex = 0;
@@ -223,7 +245,7 @@ void ExternalModel::loadBones(unsigned int /*MeshIndex*/, const aiMesh* pMesh, s
             //unsigned int vertexID = m_Entries[MeshIndex].BaseVertex + pMesh->mBones[i]->mWeights[j].mVertexId;
             unsigned int vertexID = pMesh->mBones[i]->mWeights[j].mVertexId;
             float weight = pMesh->mBones[i]->mWeights[j].mWeight;
-            addBoneData(bones[vertexID], boneIndex, weight);
+            AddBoneData(bones[vertexID], boneIndex, weight);
         }
     }
 }

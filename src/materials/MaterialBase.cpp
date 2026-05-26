@@ -12,7 +12,7 @@ CullFaceMode MaterialBase::cullFace() const
     return _cullFace;
 }
 
-std::shared_ptr<MaterialBase> MaterialBase::clone() const
+std::shared_ptr<MaterialBase> MaterialBase::Clone() const
 {
     auto result = std::make_shared<MaterialBase>(*this);
     result->setId(_idCounter);
@@ -43,12 +43,12 @@ MaterialBase::~MaterialBase()
     _shader = nullptr;
 }
 
-void MaterialBase::build()
+void MaterialBase::Build()
 {
 
 }
 
-void MaterialBase::bind(const RenderContext& ctx, const Mesh* /*mesh = nullptr*/)
+void MaterialBase::Bind(const RenderContext& ctx, const Mesh* /*mesh = nullptr*/)
 {
     _shader->use();
     switch (_cullFace)
@@ -68,7 +68,7 @@ void MaterialBase::bind(const RenderContext& ctx, const Mesh* /*mesh = nullptr*/
     }
 }
 
-void MaterialBase::unbind()
+void MaterialBase::Unbind()
 {
 }
 

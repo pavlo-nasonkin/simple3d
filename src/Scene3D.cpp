@@ -5,6 +5,8 @@
 #include "Shader.h"
 #include "materials/ShaderFactory.h"
 #include <memory>
+
+#include "materials/Material3D.h"
 #include "materials/ObjectIdMaterial.h"
 
 Scene3D::Scene3D() :

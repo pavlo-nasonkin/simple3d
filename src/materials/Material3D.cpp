@@ -5,7 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Scene3D.h"
 #include "camera/Camera.h"
-#include "Filter3d.h"
+#include "filters/Filter3d.h"
 #include "utils/StringUtils.h"
 
 Material3D::Material3D(const std::shared_ptr<Shader>& shader)
@@ -14,22 +14,22 @@ Material3D::Material3D(const std::shared_ptr<Shader>& shader)
 
 }
 
-const Material3D::FiltersList& Material3D::getFilters() const
+const Material3D::FiltersList& Material3D::GetFilters() const
 {
     return _filters;
 }
 
-std::string Material3D::getBlendingSign(const BlendMode &blendMode)
+std::string Material3D::getBlendingSign(const Filter3D::BlendMode &blendMode)
 {
     switch (blendMode)
     {
-    case BlendMode::ADD:
+    case Filter3D::BlendMode::ADD:
         return " += ";
 
-    case BlendMode::MULTIPLY:
+    case Filter3D::BlendMode::MULTIPLY:
         return " *= ";
 
-    case BlendMode::NORMAL:
+    case Filter3D::BlendMode::NORMAL:
         return " = ";
 
     default:
@@ -38,47 +38,86 @@ std::string Material3D::getBlendingSign(const BlendMode &blendMode)
     return " = ";
 }
 
-void Material3D::build()
+void Material3D::Build()
 {
+	static const std::unordered_map<Filter3D::FilterSlot, std::string> kSlotMarkers = {
+		{ Filter3D::FilterSlot::BaseColor, "// __APPLY_BASE_COLOR_FILTERS__" },
+		{ Filter3D::FilterSlot::Specular,  "// __APPLY_SPECULAR_FILTERS__"  },
+		{ Filter3D::FilterSlot::Normal,    "// __APPLY_NORMAL_FILTERS__"    },
+		{ Filter3D::FilterSlot::Emissive,  "// __APPLY_EMISSIVE_FILTERS__"  },
+		{ Filter3D::FilterSlot::Overlay,   "// __APPLY_OVERLAY_FILTERS__"   },
+	};
+	static const std::unordered_map<Filter3D::FilterSlot, std::string> kSlotTarget = {
+		{ Filter3D::FilterSlot::BaseColor, "BASE_COLOR" },
+		{ Filter3D::FilterSlot::Specular,  "SPEC_STRENGTH" },
+		{ Filter3D::FilterSlot::Normal,    "N" },
+		{ Filter3D::FilterSlot::Emissive,  "EMISSIVE" },
+		{ Filter3D::FilterSlot::Overlay,   "color" },
+	};
+
+
     if (_filters.size() > 0)
     {
         std::string fragSource = _shader->originalFragmentSource();
         std::string vertSource = _shader->originalVertexSource();
-        for (auto filter : _filters)
+        for (const auto& filter : _filters)
         {
-            if (filter->type() == FilterType::FRAGMENT)
+            if (filter->GetType() == Filter3D::FilterType::FRAGMENT)
             {
-                StringUtils::replace(fragSource, "void main()", filter->code() + "\nvoid main()");
-                size_t index = 0;
-                index = fragSource.find_last_of(';');
-                if (index != std::string::npos)
-                {
-                    const std::string& blendSign = getBlendingSign(filter->blendMode());
-                    fragSource.insert(index + 1, "\n    color" + blendSign + filter->generatedUniqueName() + "();");
-                }
-            }
-            else if (filter->type() == FilterType::VERTEX)
-            {
+            	// декларации фильтра идут в один общий маркер
+            	StringUtils::replace(fragSource, "// __FRAGMENT_DECLS__",
+									 filter->GetCode() + "\n// __FRAGMENT_DECLS__");
 
+            	const auto& marker = kSlotMarkers.at(filter->GetSlot());
+            	const auto& target = kSlotTarget.at(filter->GetSlot());
+            	const auto& blend  = getBlendingSign(filter->GetBlendMode());
+
+
+
+            	const bool targetIsVec3 = (filter->GetSlot() == Filter3D::FilterSlot::BaseColor
+						|| filter->GetSlot() == Filter3D::FilterSlot::Specular
+						|| filter->GetSlot() == Filter3D::FilterSlot::Normal
+						|| filter->GetSlot() == Filter3D::FilterSlot::Emissive);
+
+            	const bool returnsVec4  = (filter->GetResultType() == Filter3D::ResultType::VEC4);
+            	std::string rhs = filter->GetGeneratedUniqueName() + "()";
+            	if (targetIsVec3 && returnsVec4) {
+            		rhs += ".rgb";
+            	}
+
+            	std::string injection = target + blend + rhs + ";\n    " + marker;
+            	auto pos = fragSource.find(marker);
+            	if (pos != std::string::npos) {
+            		fragSource.replace(pos, marker.size(), injection);
+            	}
+            }
+            else if (filter->GetType() == Filter3D::FilterType::VERTEX)
+            {
+            	// TODO: VERTEX filters not implemented yet
             }
             else
             {
 
             }
         }
+
+		std::cout << "Built shader with filters. Vertex shader:\n" << vertSource << "\nFragment shader:\n" << fragSource << std::endl;
+
         _shader->dispose();
         _shader->setFragmentSource(fragSource);
         _shader->build();
     }
 }
 
-void Material3D::bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
+void Material3D::Bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
 {
-	MaterialBase::bind(ctx, mesh);
+	MaterialBase::Bind(ctx, mesh);
 
-    for (auto filter : _filters)
+	GLuint nextUnit = 0;
+    for (const auto& filter : _filters)
     {
-        filter->bind(_shader->Program);
+        filter->Bind(_shader->Program, nextUnit);
+    	nextUnit += filter->GetUniformsCount();
     }
 	
 	GLint modelLoc = glGetUniformLocation(_shader->Program, "model");
@@ -106,53 +145,39 @@ void Material3D::bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
 	glUniform3f(lightSpecularLoc, lightSpecular->x, lightSpecular->y, lightSpecular->z);
 	glUniform3f(lightPositionLoc, lightPos->x, lightPos->y, lightPos->z);
 
-
-
-	// Bind appropriate textures
-	GLuint diffuseNr = 1;
-	GLuint specularNr = 1;
-	for (GLuint i = 0; i < _textures.size(); i++)
-	{
-		glActiveTexture(GL_TEXTURE0 + i); // Active proper texture unit before binding
-										  // Retrieve texture number (the N in diffuse_textureN)
-		std::stringstream ss;
-		std::string number;
-		std::string name = _textures[i]->type;
-		if (name == "texture_diffuse")
-			ss << diffuseNr++; // Transfer GLuint to stream
-		else if (name == "texture_specular")
-			ss << specularNr++; // Transfer GLuint to stream
-		number = ss.str();
-		// Now set the sampler to the correct texture unit
-		glUniform1i(glGetUniformLocation(_shader->Program, (name + number).c_str()), i);
-		// And finally bind the texture
-		glBindTexture(GL_TEXTURE_2D, _textures[i]->id);
-	}
+	GLint baseColorLoc = glGetUniformLocation(_shader->Program, "uBaseColor");
+	glUniform4f(baseColorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
 
 	// Also set each mesh's shininess property to a default value (if you want you could extend this to another mesh property and possibly change this value)
 	glUniform1f(glGetUniformLocation(_shader->Program, "material.shininess"), 16.0f);
 }
 
-void Material3D::unbind()
+void Material3D::Unbind()
 {
-	MaterialBase::unbind();
-	// Always good practice to set everything back to defaults once configured.
-	for (GLuint i = 0; i < _textures.size(); i++)
-	{
-		glActiveTexture(GL_TEXTURE0 + i);
-		glBindTexture(GL_TEXTURE_2D, 0);
-    }
+	MaterialBase::Unbind();
+	GLuint unit = 0;
+	for (auto& filter : _filters) {
+		for (unsigned int i = 0; i < filter->GetUniformsCount(); ++i) {
+			glActiveTexture(GL_TEXTURE0 + unit + i);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+		unit += filter->GetUniformsCount();
+	}
 }
 
-void Material3D::addFilter(std::shared_ptr<Filter3D> filter)
+void Material3D::AddFilter(const std::shared_ptr<Filter3D>& filter)
 {
     if (filter)
     {
+    	filter->SetId(_filters.size());
+    	filter->SetNextUniformId(_nextUniformId);
+    	filter->Init();
+    	_nextUniformId += filter->GetUniformsCount();
         _filters.push_back(filter);
     }
 }
 
-std::shared_ptr<MaterialBase> Material3D::clone() const
+std::shared_ptr<MaterialBase> Material3D::Clone() const
 {
     auto result = std::make_shared<Material3D>(*this);
     result->setId(_idCounter);

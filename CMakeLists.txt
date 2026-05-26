@@ -34,10 +34,14 @@ set(SOURCE_FILES
         src/materials/ShaderFactory.h
         src/materials/SkinnedMaterial3D.cpp
         src/materials/SkinnedMaterial3D.h
-        src/materials/Filter3d.h
-        src/materials/Filter3d.cpp
+        src/materials/filters/Filter3d.h
+        src/materials/filters/Filter3d.cpp
         src/materials/filters/ColorFilter.h
         src/materials/filters/ColorFilter.cpp
+        src/materials/filters/NormalMapFilter.cpp
+        src/materials/filters/NormalMapFilter.h
+        src/materials/filters/TextureFilterBase.cpp
+        src/materials/filters/TextureFilterBase.h
         src/materials/filters/TextureMapFilter.cpp
         src/materials/filters/TextureMapFilter.h
         src/object_selector/ObjectSelector.cpp

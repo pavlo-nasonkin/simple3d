@@ -1,5 +1,5 @@
-#ifndef EXTERNAL_MODEL_H
-#define EXTERNAL_MODEL_H
+#pragma once
+
 
 // GL Includes
 #include <GL/glew.h> // Contains all the necessery OpenGL includes
@@ -45,10 +45,10 @@ private:
     std::map<std::string, int> _boneMapping;
     std::vector<BoneInfo> _boneInfos;
 	/*  Functions   */
-    void loadModel(std::string path);
-	void processNode(aiNode* node, const aiScene* scene);
-    std::shared_ptr<Mesh> processMesh(aiMesh* mesh, const aiScene* scene);
-    std::vector<std::shared_ptr<Texture2D>> loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName);
+    void LoadModel(const std::string& path);
+	void ProcessNode(aiNode* node, const aiScene* scene);
+    std::shared_ptr<Mesh> ProcessMesh(aiMesh* mesh, const aiScene* scene);
+    std::vector<std::shared_ptr<Texture2D>> LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& typeName);
     //skinned mesh
 
     Assimp::Importer import;
@@ -58,17 +58,11 @@ private:
     void ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, const Matrix4f& ParentTransform);
     void CalcInterpolatedRotation(aiQuaternion& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
     unsigned int FindRotation(float AnimationTime, const aiNodeAnim* pNodeAnim);
-    void loadBones(unsigned int MeshIndex, const aiMesh* pMesh, std::vector<VertexBoneData>& bones);
+    void LoadBones(unsigned int MeshIndex, const aiMesh* pMesh, std::vector<VertexBoneData>& bones);
     const aiNodeAnim* FindNodeAnim(const aiAnimation* pAnimation, const std::string& nodeName);
     void CalcInterpolatedScaling(aiVector3D& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
     void CalcInterpolatedPosition(aiVector3D& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
     unsigned int FindScaling(float AnimationTime, const aiNodeAnim* pNodeAnim);
     unsigned int FindPosition(float AnimationTime, const aiNodeAnim* pNodeAnim);
-    void addBoneData(VertexBoneData& data, unsigned int boneID, float weight);
-
-
+    void AddBoneData(VertexBoneData& data, unsigned int boneID, float weight);
 };
-
-
-
-#endif//EXTERNAL_MODEL_H

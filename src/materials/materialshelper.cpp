@@ -1,5 +1,5 @@
 #include "materialshelper.h"
-#include "materials/Filter3d.h"
+#include "filters/Filter3d.h"
 #include <iostream>
 
 std::string MaterialsHelper::blendModeToStr(const BlendMode& blendMode)

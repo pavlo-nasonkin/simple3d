@@ -1,11 +1,7 @@
 #pragma once
 
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
 #include <vector>
-#include "../GLEWImporter.h"
+#include "GLEWImporter.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -13,12 +9,10 @@
 //Assimp
 #include <assimp/types.h>
 
-#include "../Shader.h"
-#include "../resources/Texture2D.h"
-#include "../materials/Material3D.h"
-#include "../materials/MaterialBase.h"
+#include "resources/Texture2D.h"
+#include "materials/MaterialBase.h"
 #include <memory>
-#include "../Pivot3D.h"
+#include "Pivot3D.h"
 
 
 
@@ -26,8 +20,9 @@ enum AttribPointer{
     VERTEX_ID_LOCATION = 0,
     NORMAL_ID_LOCATION = 1,
     UV_ID_LOCATION = 2,
-    BONE_ID_LOCATION = 3,
-    BONE_WEIGHT_LOCATION = 4
+	TANGENT_ID_LOCATION = 3,
+    BONE_ID_LOCATION = 4,
+    BONE_WEIGHT_LOCATION = 5
 };
 
 struct Vertex {
@@ -37,6 +32,7 @@ struct Vertex {
 	glm::vec3 Normal;
 	// TexCoords
 	glm::vec2 TexCoords;
+	glm::vec3 Tangent;
 };
 
 #define NUM_BONES_PER_VERTEX 4
@@ -66,11 +62,11 @@ public:
 	/*  Functions  */
 	// Constructor
     Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::shared_ptr<MaterialBase>& mat, const std::vector<VertexBoneData>& bones);
-	~Mesh() override = default;
+	~Mesh() override;
 	// Render the mesh
     void Render(const RenderContext &ctx, MaterialBase* material) override;
-    std::shared_ptr<MaterialBase> material() const;
+    std::shared_ptr<MaterialBase> GetMaterial() const;
 
 private:
-	void setupMesh();
+	void SetupMesh();
 };

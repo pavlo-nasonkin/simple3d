@@ -40,7 +40,7 @@ int main() {
 	Engine::GetInstance().Init(window);
 
 	{
-		auto camera = std::make_shared<FirstPersonCamera>();
+		auto camera = std::make_shared<FreeLookCamera>();
 		camera->SetScreenWidth(screenWidth);
 		camera->SetScreenHeight(screenHeight);
 		camera->buildProjectionMatrix(45.0f, 0.1f, 100.0f);
@@ -62,16 +62,24 @@ int main() {
 		auto box2 = std::make_shared<BoxModel>();
 		box2->SetColor(0x00ff00);
 		box2->Init();
-
-
+		//
+		//
 		box2->SetPosition(1.0f, 0.0f, 0.0f);
 		box2->SetScale(0.5f, 0.5f, 0.5f);
 
-		auto soldier = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
-		soldier->Init();
-		soldier->SetScale(0.1f, 0.1f, 0.1f);
+		auto backpack = std::make_shared<ExternalModel>("../assets/models/backpack/backpack.obj");
+		backpack->Init();
+		backpack->SetScale(1.0f, 1.0f, 1.0f);
+		scene3D->AddChild(backpack);
 
-		scene3D->AddChild(soldier);
+		// auto nanosuit = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
+		// nanosuit->Init();
+		// nanosuit->SetScale(.1f, 0.1f, 0.1f);
+		// nanosuit->SetPosition(3.0f, 0.0f, 0.0f);
+		// scene3D->AddChild(nanosuit);
+
+
+
 		scene3D->AddChild(box);
 		box->AddChild(box2);
 

@@ -2,7 +2,7 @@
 #define MATERIALSHELPER_H
 
 #include <string>
-#include "materials/Filter3d.h"
+#include "filters/Filter3d.h"
 #include "MaterialBase.h"
 
 class MaterialsHelper

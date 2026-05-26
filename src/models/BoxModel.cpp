@@ -27,10 +27,10 @@ std::shared_ptr<Mesh> BoxModel::processMesh()
                                                           "../assets/shaders/defaultColorLight.fs"));
 
     auto colorFilter = std::make_shared<ColorFilter>();
-    colorFilter->setColor(_color);
-    colorFilter->setBlendMode(BlendMode::ADD);
-    mat->addFilter(colorFilter);
-    mat->build();
+    colorFilter->SetColor(_color);
+    colorFilter->SetBlendMode(Filter3D::BlendMode::ADD);
+    mat->AddFilter(colorFilter);
+    mat->Build();
     auto mesh = std::make_shared<Mesh>(boxVertices, boxIndices, mat, std::vector<VertexBoneData>());
     mesh->SetName(std::string("Box") + std::to_string(mesh->GetId()));
     return mesh;
@@ -57,33 +57,39 @@ std::vector<GLuint> BoxModel::boxIndices = {
 };
 
 std::vector<Vertex> BoxModel::boxVertices = {
-	{ glm::vec3(0.5f, 0.5f, -0.5f),		glm::vec3(0.0f, 0.0f, -1.0f),	glm::vec2(0.0f, 0.0f) },
-	{ glm::vec3(0.5f, -0.5f, -0.5f),	glm::vec3(0.0f, 0.0f, -1.0f),	glm::vec2(1.0f, 0.0f) },
-	{ glm::vec3(-0.5f, -0.5f, -0.5f),	glm::vec3(0.0f, 0.0f, -1.0f),	glm::vec2(1.0f, 1.0f) },
-	{ glm::vec3(-0.5f, 0.5f, -0.5f),	glm::vec3(0.0f, 0.0f, -1.0f),	glm::vec2(0.0f, 1.0f) },
+	// -Z face: T = (0, -1, 0)
+	{ glm::vec3(0.5f, 0.5f, -0.5f),		glm::vec3(0.0f, 0.0f, -1.0f),	glm::vec2(0.0f, 0.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(0.5f, -0.5f, -0.5f),	glm::vec3(0.0f, 0.0f, -1.0f),	glm::vec2(1.0f, 0.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(-0.5f, -0.5f, -0.5f),	glm::vec3(0.0f, 0.0f, -1.0f),	glm::vec2(1.0f, 1.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(-0.5f, 0.5f, -0.5f),	glm::vec3(0.0f, 0.0f, -1.0f),	glm::vec2(0.0f, 1.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
 
-	{ glm::vec3(0.5f, 0.5f, 0.5f),		glm::vec3(0.0f, 0.0f, 1.0f),	glm::vec2(0.0f, 0.0f) },
-	{ glm::vec3(0.5f, -0.5f, 0.5f),		glm::vec3(0.0f, 0.0f, 1.0f),	glm::vec2(1.0f, 0.0f) },
-	{ glm::vec3(-0.5f, -0.5f, 0.5f),	glm::vec3(0.0f, 0.0f, 1.0f),	glm::vec2(1.0f, 1.0f) },
-	{ glm::vec3(-0.5f, 0.5f, 0.5f),		glm::vec3(0.0f, 0.0f, 1.0f),	glm::vec2(0.0f, 1.0f) },
+	// +Z face: T = (0, -1, 0)
+	{ glm::vec3(0.5f, 0.5f, 0.5f),		glm::vec3(0.0f, 0.0f, 1.0f),	glm::vec2(0.0f, 0.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(0.5f, -0.5f, 0.5f),		glm::vec3(0.0f, 0.0f, 1.0f),	glm::vec2(1.0f, 0.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(-0.5f, -0.5f, 0.5f),	glm::vec3(0.0f, 0.0f, 1.0f),	glm::vec2(1.0f, 1.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(-0.5f, 0.5f, 0.5f),		glm::vec3(0.0f, 0.0f, 1.0f),	glm::vec2(0.0f, 1.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
 
-	{ glm::vec3(0.5f,	0.5f, 0.5f),	glm::vec3(0.0f, 1.0f, 0.0f),	glm::vec2(0.0f, 0.0f) },
-	{ glm::vec3(0.5f,	0.5f, -0.5f),	glm::vec3(0.0f, 1.0f, 0.0f),	glm::vec2(1.0f, 0.0f) },
-	{ glm::vec3(-0.5f,	0.5f, -0.5f),	glm::vec3(0.0f, 1.0f, 0.0f),	glm::vec2(1.0f, 1.0f) },
-	{ glm::vec3(-0.5f,	0.5f, 0.5f),	glm::vec3(0.0f, 1.0f, 0.0f),	glm::vec2(0.0f, 1.0f) },
+	// +Y face: T = (0, 0, -1)
+	{ glm::vec3(0.5f,	0.5f, 0.5f),	glm::vec3(0.0f, 1.0f, 0.0f),	glm::vec2(0.0f, 0.0f),	glm::vec3(0.0f, 0.0f, -1.0f) },
+	{ glm::vec3(0.5f,	0.5f, -0.5f),	glm::vec3(0.0f, 1.0f, 0.0f),	glm::vec2(1.0f, 0.0f),	glm::vec3(0.0f, 0.0f, -1.0f) },
+	{ glm::vec3(-0.5f,	0.5f, -0.5f),	glm::vec3(0.0f, 1.0f, 0.0f),	glm::vec2(1.0f, 1.0f),	glm::vec3(0.0f, 0.0f, -1.0f) },
+	{ glm::vec3(-0.5f,	0.5f, 0.5f),	glm::vec3(0.0f, 1.0f, 0.0f),	glm::vec2(0.0f, 1.0f),	glm::vec3(0.0f, 0.0f, -1.0f) },
 
-	{ glm::vec3(0.5f,	-0.5f, 0.5f),	glm::vec3(0.0f, -1.0f, 0.0f),	glm::vec2(0.0f, 0.0f) },
-	{ glm::vec3(0.5f,	-0.5f, -0.5f),	glm::vec3(0.0f, -1.0f, 0.0f),	glm::vec2(1.0f, 0.0f) },
-	{ glm::vec3(-0.5f,	-0.5f, -0.5f),	glm::vec3(0.0f, -1.0f, 0.0f),	glm::vec2(1.0f, 1.0f) },
-	{ glm::vec3(-0.5f,	-0.5f, 0.5f),	glm::vec3(0.0f, -1.0f, 0.0f),	glm::vec2(0.0f, 1.0f) },
+	// -Y face: T = (0, 0, -1)
+	{ glm::vec3(0.5f,	-0.5f, 0.5f),	glm::vec3(0.0f, -1.0f, 0.0f),	glm::vec2(0.0f, 0.0f),	glm::vec3(0.0f, 0.0f, -1.0f) },
+	{ glm::vec3(0.5f,	-0.5f, -0.5f),	glm::vec3(0.0f, -1.0f, 0.0f),	glm::vec2(1.0f, 0.0f),	glm::vec3(0.0f, 0.0f, -1.0f) },
+	{ glm::vec3(-0.5f,	-0.5f, -0.5f),	glm::vec3(0.0f, -1.0f, 0.0f),	glm::vec2(1.0f, 1.0f),	glm::vec3(0.0f, 0.0f, -1.0f) },
+	{ glm::vec3(-0.5f,	-0.5f, 0.5f),	glm::vec3(0.0f, -1.0f, 0.0f),	glm::vec2(0.0f, 1.0f),	glm::vec3(0.0f, 0.0f, -1.0f) },
 
-	{ glm::vec3(0.5f, 0.5f, 0.5f),		glm::vec3(1.0f, 0.0f, 0.0f),	glm::vec2(0.0f, 0.0f) },
-	{ glm::vec3(0.5f, -0.5f, 0.5f),		glm::vec3(1.0f, 0.0f, 0.0f),	glm::vec2(1.0f, 0.0f) },
-	{ glm::vec3(0.5f, -0.5f, -0.5f),	glm::vec3(1.0f, 0.0f, 0.0f),	glm::vec2(1.0f, 1.0f) },
-	{ glm::vec3(0.5f, 0.5f, -0.5f),		glm::vec3(1.0f, 0.0f, 0.0f),	glm::vec2(0.0f, 1.0f) },
+	// +X face: T = (0, -1, 0)
+	{ glm::vec3(0.5f, 0.5f, 0.5f),		glm::vec3(1.0f, 0.0f, 0.0f),	glm::vec2(0.0f, 0.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(0.5f, -0.5f, 0.5f),		glm::vec3(1.0f, 0.0f, 0.0f),	glm::vec2(1.0f, 0.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(0.5f, -0.5f, -0.5f),	glm::vec3(1.0f, 0.0f, 0.0f),	glm::vec2(1.0f, 1.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(0.5f, 0.5f, -0.5f),		glm::vec3(1.0f, 0.0f, 0.0f),	glm::vec2(0.0f, 1.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
 
-	{ glm::vec3(-0.5f, 0.5f, 0.5f),		glm::vec3(-1.0f, 0.0f, 0.0f),	glm::vec2(0.0f, 0.0f) },
-	{ glm::vec3(-0.5f, -0.5f, 0.5f),	glm::vec3(-1.0f, 0.0f, 0.0f),	glm::vec2(1.0f, 0.0f) },
-	{ glm::vec3(-0.5f, -0.5f, -0.5f),	glm::vec3(-1.0f, 0.0f, 0.0f),	glm::vec2(1.0f, 1.0f) },
-	{ glm::vec3(-0.5f, 0.5f, -0.5f),	glm::vec3(-1.0f, 0.0f, 0.0f),	glm::vec2(0.0f, 1.0f) },
+	// -X face: T = (0, -1, 0)
+	{ glm::vec3(-0.5f, 0.5f, 0.5f),		glm::vec3(-1.0f, 0.0f, 0.0f),	glm::vec2(0.0f, 0.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(-0.5f, -0.5f, 0.5f),	glm::vec3(-1.0f, 0.0f, 0.0f),	glm::vec2(1.0f, 0.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(-0.5f, -0.5f, -0.5f),	glm::vec3(-1.0f, 0.0f, 0.0f),	glm::vec2(1.0f, 1.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
+	{ glm::vec3(-0.5f, 0.5f, -0.5f),	glm::vec3(-1.0f, 0.0f, 0.0f),	glm::vec2(0.0f, 1.0f),	glm::vec3(0.0f, -1.0f, 0.0f) },
 };

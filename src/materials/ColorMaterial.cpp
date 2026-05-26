@@ -9,9 +9,9 @@ ColorMaterial::ColorMaterial(const std::shared_ptr<Shader>& shader)
 {
 }
 
-void ColorMaterial::bind(const RenderContext& ctx, const Mesh* mesh/*=nullptr*/)
+void ColorMaterial::Bind(const RenderContext& ctx, const Mesh* mesh/*=nullptr*/)
 {
-	MaterialBase::bind(ctx, mesh);
+	MaterialBase::Bind(ctx, mesh);
 
 
 	GLint modelLoc = glGetUniformLocation(_shader->Program, "model");

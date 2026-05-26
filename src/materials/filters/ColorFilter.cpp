@@ -2,44 +2,33 @@
 #include "utils/StringUtils.h"
 
 std::string ColorFilter::_colorFilterCode =
-        "uniform vec4 uColor{id};\n"
+        "uniform vec4 uColor{uniform_id};\n"
         "vec4 colorFilter{id}()\n"
         "{\n"
-        "    return uColor{id};\n"
+        "    return uColor{uniform_id};\n"
         "}\n";
-
-unsigned int ColorFilter::color() const
-{
-    return _color;
-}
-
-void ColorFilter::setColor(unsigned int color)
-{
-    _color = color;
-}
 
 ColorFilter::ColorFilter()
     :Filter3D(),
-      _color(0xFF000000),
-      _uniformName()
+      _color(0xFF000000)
 {
-    _code = _colorFilterCode;
     _name = "colorFilter";
+    _resultType = ResultType::VEC4;
+}
+
+void ColorFilter::Init() {
+    Filter3D::Init();
+
     const std::string idStr = std::to_string(_id);
-    _generatedUniqueName = _name + idStr;
-    _uniformName = "uColor" + idStr;
+    const std::string uniformIdStr = std::to_string(_nextUniformId);
+    _uniformName = "uColor" + uniformIdStr;
     StringUtils::replace(_code, "{id}", idStr);
 }
 
-ColorFilter::~ColorFilter()
+void ColorFilter::Bind(GLuint program, GLuint firstTextureUnit)
 {
+    Filter3D::Bind(program, firstTextureUnit);
 
-}
-
-void ColorFilter::bind(GLuint program)
-{
-    Filter3D::bind(program);
-    //TODO make _uniformName c_str by default
     GLint colorLoc = glGetUniformLocation(program, _uniformName.c_str());
     unsigned char pixel[4];
 

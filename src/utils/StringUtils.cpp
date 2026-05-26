@@ -1,6 +1,6 @@
 #include "StringUtils.h"
 
-void StringUtils::replace(std::string &source, const std::string &what, const std::string &with)
+void StringUtils::replace(std::string& source, const std::string& what, const std::string& with)
 {
     size_t index = 0;
     while (true) {
