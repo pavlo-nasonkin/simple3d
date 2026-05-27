@@ -1,5 +1,6 @@
 #include "ExternalModel.h"
 
+#include <iostream>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -123,17 +124,14 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
 		}
 	}
     std::shared_ptr<Material3D> mat;
-    std::shared_ptr<Shader> shader;
     if (hasBones)
     {
-       shader = std::make_shared<Shader>("../assets/shaders/shader_skin.vs", "../assets/shaders/default.fs");
-       mat = std::make_shared<SkinnedMaterial3D>(shader);
+       mat = std::make_shared<SkinnedMaterial3D>("../assets/shaders/shader_skin.vs", "../assets/shaders/default.fs");
        auto skinnedMat = std::dynamic_pointer_cast<SkinnedMaterial3D>(mat);
        skinnedMat->transforms = _transforms;
     }
     else {
-        shader = std::make_shared<Shader>("../assets/shaders/shader.vs", "../assets/shaders/defaultColorLight.fs");
-        mat = std::make_shared<Material3D>(shader);
+        mat = std::make_shared<Material3D>("../assets/shaders/shader.vs", "../assets/shaders/defaultColorLight.fs");
     }
 
 

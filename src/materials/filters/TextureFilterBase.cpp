@@ -12,9 +12,6 @@ TextureFilterBase::TextureFilterBase(const std::shared_ptr<Texture2D>& texture):
 void TextureFilterBase::Init() {
     Filter3D::Init();
 
-
-    _generatedUniqueName = _name + std::to_string(_id);
-
     const std::string idStr = std::to_string(_id);
     const std::string samplerIdStr = std::to_string(_nextUniformId);
     _uniformName = "uSampler" + samplerIdStr;

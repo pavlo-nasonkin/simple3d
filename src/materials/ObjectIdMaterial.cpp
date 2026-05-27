@@ -5,8 +5,8 @@
 #include "Pivot3D.h"
 #include "glm/gtc/type_ptr.hpp"
 
-ObjectIdMaterial::ObjectIdMaterial(const std::shared_ptr<Shader>& shader)
-	:MaterialBase(shader)
+ObjectIdMaterial::ObjectIdMaterial(const std::string &vertexShaderPath, const std::string &fragmentShaderPath)
+	:MaterialBase(vertexShaderPath, fragmentShaderPath)
 {
 
 }
@@ -15,16 +15,16 @@ void ObjectIdMaterial::Bind(const RenderContext& ctx, const Mesh* mesh/*=nullptr
 {
 	MaterialBase::Bind(ctx, mesh);
 
-	GLint modelLoc = glGetUniformLocation(_shader->Program, "model");
-	GLint viewLoc = glGetUniformLocation(_shader->Program, "view");
-	GLint projectionLoc = glGetUniformLocation(_shader->Program, "projection");
+	GLint modelLoc = glGetUniformLocation(_shader->GetProgram(), "model");
+	GLint viewLoc = glGetUniformLocation(_shader->GetProgram(), "view");
+	GLint projectionLoc = glGetUniformLocation(_shader->GetProgram(), "projection");
 
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(ctx.model));
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(ctx.view));
 	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(ctx.projection));
 
 	//Bind id
-	GLint colorLoc = glGetUniformLocation(_shader->Program, "uColor");
+	GLint colorLoc = glGetUniformLocation(_shader->GetProgram(), "uColor");
 	unsigned char pixel[4];
     unsigned int id = mesh->GetId();
 	pixel[0] = id & 0xff;

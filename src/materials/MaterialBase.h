@@ -1,11 +1,12 @@
 #pragma once
-#ifndef MaterialBase_h__
-#define MaterialBase_h__
 
 #include <string>
 #include <memory>
+#include <unordered_map>
 
-#include "../render/RenderContext.h"
+#include "ShaderFactory.h"
+#include "render/RenderContext.h"
+#include "GL/glew.h"
 
 class Shader;
 class Mesh;
@@ -27,10 +28,12 @@ protected:
     unsigned int _id;
 protected:
     std::shared_ptr<Shader> _shader;
+    std::string _vertexShaderPath;
+    std::string _fragmentShaderPath;
     CullFaceMode _cullFace;
 public:
-    MaterialBase(const std::shared_ptr<Shader>& shader);
-	virtual ~MaterialBase();
+    MaterialBase(const std::string &vertexShaderPath, const std::string &fragmentShaderPath);
+	virtual ~MaterialBase() = default;
     virtual void Build();
 	virtual void Bind(const RenderContext& ctx, const Mesh* mesh = nullptr);
 	virtual void Unbind();
@@ -47,10 +50,11 @@ public:
     CullFaceMode cullFace() const;
     virtual std::shared_ptr<MaterialBase> Clone() const;
 
-
+    static void ClearProgramCache();
 protected:
-
-private:
+    virtual const ShaderFactory::CompiledShader& BuildVertexShader() const;
+    virtual const ShaderFactory::CompiledShader& BuildFragmentShader() const;
+    static size_t HashSources(const std::string &vertexSource, const std::string &fragmentSource);
+    static GLuint LinkProgram(GLuint vShader, GLuint fShader);
+    static std::unordered_map<size_t, std::shared_ptr<Shader>> _programCache;
 };
-
-#endif // MaterialBase_h__

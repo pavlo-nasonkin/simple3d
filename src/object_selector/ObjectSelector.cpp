@@ -19,8 +19,8 @@ ObjectSelector::ObjectSelector(const std::shared_ptr<Scene3D> &scene, const std:
 {
 	Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_BUTTON);
 
-    std::shared_ptr<Shader> colorShade = ShaderFactory::getShader("../assets/shaders/light_source_shader.vs", "../assets/shaders/color.fs");
-    _colorMaterial = std::make_shared<ObjectIdMaterial>(colorShade);
+    _colorMaterial = std::make_shared<ObjectIdMaterial>("../assets/shaders/shader.vs", "../assets/shaders/color.fs");
+	_colorMaterial->Build();
 }
 
 ObjectSelector::~ObjectSelector()

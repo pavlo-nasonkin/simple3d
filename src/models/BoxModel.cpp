@@ -23,17 +23,24 @@ void BoxModel::Init()
 
 std::shared_ptr<Mesh> BoxModel::processMesh()
 {
-    auto mat = std::make_shared<Material3D>(ShaderFactory::getShader("../assets/shaders/shader.vs",
-                                                          "../assets/shaders/defaultColorLight.fs"));
+	auto mat = std::make_shared<Material3D>("../assets/shaders/shader.vs",
+														  "../assets/shaders/defaultColorLight.fs");
 
-    auto colorFilter = std::make_shared<ColorFilter>();
-    colorFilter->SetColor(_color);
-    colorFilter->SetBlendMode(Filter3D::BlendMode::ADD);
-    mat->AddFilter(colorFilter);
+	_colorFilter = std::make_shared<ColorFilter>();
+	_colorFilter->SetColor(_color);
+	_colorFilter->SetBlendMode(Filter3D::BlendMode::ADD);
+    mat->AddFilter(_colorFilter);
     mat->Build();
     auto mesh = std::make_shared<Mesh>(boxVertices, boxIndices, mat, std::vector<VertexBoneData>());
     mesh->SetName(std::string("Box") + std::to_string(mesh->GetId()));
     return mesh;
+}
+
+void BoxModel::SetColor(unsigned int color) {
+	_color = color;
+	if (_colorFilter) {
+		_colorFilter->SetColor(color);
+	}
 }
 
 std::vector<GLuint> BoxModel::boxIndices = {

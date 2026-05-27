@@ -58,12 +58,13 @@ int main() {
 
 
 		auto box = std::make_shared<BoxModel>();
+
 		box->Init();
+		box->SetColor(0xff0000ff);
 		auto box2 = std::make_shared<BoxModel>();
-		box2->SetColor(0x00ff00);
+		box2->SetColor(0x00ff00ff);
 		box2->Init();
-		//
-		//
+
 		box2->SetPosition(1.0f, 0.0f, 0.0f);
 		box2->SetScale(0.5f, 0.5f, 0.5f);
 

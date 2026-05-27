@@ -6,21 +6,31 @@
 #include <memory>
 
 class Shader;
-struct ShaderInfo
-{
-    GLuint shaderId;
-    std::string code;
-};
 
 class ShaderFactory
 {
-    static std::map<std::string, ShaderInfo, std::less<>> _vertexShaders;
-    static std::map<std::string, ShaderInfo, std::less<>> _fragmentShaders;
-    static std::map<std::string, std::shared_ptr<Shader>, std::less<>> _programs;
 public:
-    static std::shared_ptr<Shader> getShader(std::string_view vertShader, std::string_view fragShader);
+    struct CompiledShader {
+        GLuint id = 0;
+        std::string source;
+    };
+
+    // Парсит файл (один раз) + компилирует shader-object (один раз).
+    // Возвращает GLuint, готовый к линковке.
+    static const CompiledShader& GetCompiledShader(GLenum type, std::string_view path);
+    static const CompiledShader& GetCompiledShaderFromSource(GLenum type, const std::string& source);
+    // Отдаёт оригинальный текст исходника (нужен Material'у для подстановки фильтров).
+    static const std::string& GetShaderSource(std::string_view path);
+    static void Cleanup();
 	
 private:
-	static GLuint getFromCacheOrCreate(int type, std::string_view path);
+
+    static std::map<std::string, std::string, std::less<>> _shaderSources;
+    static std::map<std::string, CompiledShader, std::less<>> _vertexShadersByPath;
+    static std::map<std::string, CompiledShader, std::less<>> _fragmentShadersByPath;
+
+    static std::map<std::size_t, CompiledShader> _vertexShadersByHash;
+    static std::map<std::size_t, CompiledShader> _fragmentShadersByHash;
+
     static GLuint createShaderFromSource(int type, const GLchar **source, int& status);
 };

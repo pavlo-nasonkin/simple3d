@@ -5,6 +5,7 @@
 #include <GL/glew.h>
 #include "Model.h"
 
+class ColorFilter;
 class Material3D;
 class MaterialBase;
 
@@ -17,14 +18,16 @@ private:
 	static std::vector<Vertex> boxVertices;
 	static std::vector<GLuint> boxIndices;
 
-	unsigned int _color = 0x888888ff;
+	unsigned int _color = 0x000000FF;
+	std::shared_ptr<ColorFilter> _colorFilter;
 public:
 	BoxModel();
 	~BoxModel() override;
     void Init() override;
     std::shared_ptr<Mesh> processMesh();
 
-	void SetColor(unsigned int color) { _color = color; }
+	void SetColor(unsigned int color);
+
 private:
 };
 

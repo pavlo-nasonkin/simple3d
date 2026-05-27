@@ -45,6 +45,8 @@ void Engine::Cleanup()
     _mouseInput = nullptr;
     _keyboardInput = nullptr;
     _updateBroadcaster = nullptr;
+    MaterialBase::ClearProgramCache();
+    ShaderFactory::Cleanup();
 }
 
 long long Engine::GetCurrentTimeMillis() const

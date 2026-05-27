@@ -23,6 +23,7 @@ void ColorFilter::Init() {
     const std::string uniformIdStr = std::to_string(_nextUniformId);
     _uniformName = "uColor" + uniformIdStr;
     StringUtils::replace(_code, "{id}", idStr);
+    StringUtils::replace(_code, "{uniform_id}", uniformIdStr);
 }
 
 void ColorFilter::Bind(GLuint program, GLuint firstTextureUnit)

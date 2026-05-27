@@ -15,8 +15,7 @@ Scene3D::Scene3D() :
     _lightDiffuse({ 0.5f, 0.5f, 0.5f }),
     _lightSpecular({ 1.0f, 1.0f, 1.0f })
 {
-    std::shared_ptr<Shader> colorShade = ShaderFactory::getShader("../assets/shaders/light_source_shader.vs", "../assets/shaders/color.fs");
-    _colorMaterial = std::make_shared<ObjectIdMaterial>(colorShade);
+    _colorMaterial = std::make_shared<ObjectIdMaterial>("../assets/shaders/light_source_shader.vs", "../assets/shaders/color.fs");
 }
 
 Scene3D::~Scene3D()
@@ -30,8 +29,7 @@ void Scene3D::initLightView()
     _lamp->Init();
 	_lamp->SetScale(0.1f, 0.1f, 0.1f);
 	_lamp->SetPosition(_lightPosition.x, _lightPosition.y, _lightPosition.z);
-    std::shared_ptr<Shader> lampShader = ShaderFactory::getShader("../assets/shaders/light_source_shader.vs", "../assets/shaders/light_source_shader.fs");
-    _lightSourceShader = std::make_shared<Material3D>(lampShader);
+    _lightSourceShader = std::make_shared<Material3D>("../assets/shaders/light_source_shader.vs", "../assets/shaders/light_source_shader.fs");
 }
 
 void Scene3D::update()
