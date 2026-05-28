@@ -24,7 +24,7 @@ public:
 	BoxModel();
 	~BoxModel() override;
     void Init() override;
-    std::shared_ptr<Mesh> processMesh();
+    std::shared_ptr<Mesh> ProcessMesh();
 
 	void SetColor(unsigned int color);
 

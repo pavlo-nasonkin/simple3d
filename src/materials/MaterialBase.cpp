@@ -7,6 +7,7 @@
 #include "GLEWImporter.h"
 #include "ShaderFactory.h"
 #include <glm/gtx/hash.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 std::unordered_map<size_t, std::shared_ptr<Shader>> MaterialBase::_programCache;
 unsigned int MaterialBase::_idCounter = 0;
@@ -26,29 +27,6 @@ const ShaderFactory::CompiledShader& MaterialBase::BuildFragmentShader() const {
     return ShaderFactory::GetCompiledShader(GL_FRAGMENT_SHADER, _fragmentShaderPath);
 }
 
-CullFaceMode MaterialBase::cullFace() const
-{
-    return _cullFace;
-}
-
-std::shared_ptr<MaterialBase> MaterialBase::Clone() const
-{
-    auto result = std::make_shared<MaterialBase>(*this);
-    result->setId(_idCounter);
-    _idCounter++;
-    return result;
-}
-
-void MaterialBase::setId(unsigned int id)
-{
-    _id = id;
-}
-
-void MaterialBase::setShader(const std::shared_ptr<Shader>& shader)
-{
-    _shader = shader;
-}
-
 MaterialBase::MaterialBase(const std::string &vertexShaderPath, const std::string &fragmentShaderPath)
     : _cullFace(CullFaceMode::back), _vertexShaderPath(vertexShaderPath), _fragmentShaderPath(fragmentShaderPath)
 {
@@ -65,12 +43,15 @@ void MaterialBase::Build()
     const auto key = HashSources(vsObject.source, fsObject.source);
     if (auto it = _programCache.find(key); it != _programCache.end()) {
         _shader = it->second;   // переиспользуем
+        _uniformCache.Reset(_shader->GetProgram());
         return;
     }
 
     // Компилируем собственный фрагмент-шейдер
     GLuint program = LinkProgram(vsObject.id, fsObject.id);
     _shader = std::make_shared<Shader>(program);
+    _uniformCache.Reset(_shader->GetProgram());
+
     _programCache.emplace(key, _shader);
 
     std::cout << "Built shader with filters. Vertex shader:\n" << vsObject.source << "\nFragment shader:\n" << fsObject.source << std::endl;
@@ -113,6 +94,14 @@ void MaterialBase::Bind(const RenderContext& ctx, const Mesh* /*mesh = nullptr*/
         break;
 
     }
+
+    GLint modelLoc = _uniformCache.GetUniformLocation("model");
+    GLint viewLoc = _uniformCache.GetUniformLocation("view");
+    GLint projectionLoc = _uniformCache.GetUniformLocation("projection");
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(ctx.model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(ctx.view));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(ctx.projection));
 }
 
 void MaterialBase::Unbind()
@@ -124,29 +113,4 @@ size_t MaterialBase::HashSources(const std::string &vertexSource, const std::str
     std::size_t h2 = std::hash<std::string>{}(fragmentSource);
     glm::detail::hash_combine(h1, h2); // Combines the hash of s2 into s1's hash
     return h1;
-}
-
-std::string MaterialBase::name() const
-{
-    return _name;
-}
-
-void MaterialBase::setName(const std::string &name)
-{
-    _name = name;
-}
-
-unsigned int MaterialBase::id() const
-{
-    return _id;
-}
-
-void MaterialBase::setCullFace(const CullFaceMode &cullFace)
-{
-    _cullFace = cullFace;
-}
-
-std::shared_ptr<Shader> MaterialBase::shader() const
-{
-    return _shader;
 }

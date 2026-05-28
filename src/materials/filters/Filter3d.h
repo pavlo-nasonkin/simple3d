@@ -39,6 +39,7 @@ public:
     virtual ~Filter3D() = default;
     virtual void Init();
     virtual void Bind(GLuint program, GLuint firstTextureUnit = 0) {}
+    virtual void Unbind(GLuint program, GLuint firstTextureUnit = 0) {}
 
     const std::string& GetName() const { return _name; }
     void SetName(const std::string& name) { _name = name; }

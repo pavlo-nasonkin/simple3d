@@ -30,3 +30,10 @@ void TextureFilterBase::Bind(GLuint program, GLuint firstTextureUnit)
     glUniform1i(textureLoc, static_cast<GLint>(firstTextureUnit));
     glBindTexture(GL_TEXTURE_2D, _texture->id);
 }
+
+void TextureFilterBase::Unbind(GLuint program, GLuint firstTextureUnit) {
+    Filter3D::Unbind(program, firstTextureUnit);
+
+    glActiveTexture(GL_TEXTURE0 + firstTextureUnit);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}

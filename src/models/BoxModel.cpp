@@ -4,6 +4,8 @@
 #include "Engine.h"
 #include "resources/TextureManager.h"
 #include <string>
+
+#include "lighting/UnlitLightingModel.h"
 #include "materials/ShaderFactory.h"
 #include "materials/Material3D.h"
 #include "materials/filters/ColorFilter.h"
@@ -18,14 +20,14 @@ BoxModel::~BoxModel()
 
 void BoxModel::Init()
 {
-    AddChild(processMesh());
+    AddChild(ProcessMesh());
 }
 
-std::shared_ptr<Mesh> BoxModel::processMesh()
+std::shared_ptr<Mesh> BoxModel::ProcessMesh()
 {
 	auto mat = std::make_shared<Material3D>("../assets/shaders/shader.vs",
 														  "../assets/shaders/defaultColorLight.fs");
-
+	mat->SetLightingModel(std::make_unique<UnlitLightingModel>());
 	_colorFilter = std::make_shared<ColorFilter>();
 	_colorFilter->SetColor(_color);
 	_colorFilter->SetBlendMode(Filter3D::BlendMode::ADD);

@@ -101,8 +101,3 @@ void Mesh::SetupMesh()
     }
     glBindVertexArray(0);
 }
-
-std::shared_ptr<MaterialBase> Mesh::GetMaterial() const
-{
-    return _material;
-}

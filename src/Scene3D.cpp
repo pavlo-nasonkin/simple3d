@@ -15,7 +15,7 @@ Scene3D::Scene3D() :
     _lightDiffuse({ 0.5f, 0.5f, 0.5f }),
     _lightSpecular({ 1.0f, 1.0f, 1.0f })
 {
-    _colorMaterial = std::make_shared<ObjectIdMaterial>("../assets/shaders/light_source_shader.vs", "../assets/shaders/color.fs");
+
 }
 
 Scene3D::~Scene3D()
@@ -29,7 +29,7 @@ void Scene3D::initLightView()
     _lamp->Init();
 	_lamp->SetScale(0.1f, 0.1f, 0.1f);
 	_lamp->SetPosition(_lightPosition.x, _lightPosition.y, _lightPosition.z);
-    _lightSourceShader = std::make_shared<Material3D>("../assets/shaders/light_source_shader.vs", "../assets/shaders/light_source_shader.fs");
+    AddChild(_lamp);
 }
 
 void Scene3D::update()
@@ -40,13 +40,7 @@ void Scene3D::update()
 void Scene3D::Render(const RenderContext& ctx, MaterialBase* material /*= nullptr*/)
 {
 	prepareRender();
-
-    auto curLightMat = material != nullptr ? material : _lightSourceShader.get();
-//    _lamp->render(curLightMat);
-
 	Pivot3D::Render(ctx, material);
-//	Pivot3D::render(&*_colorMaterial);
-
     postRender();
 }
 

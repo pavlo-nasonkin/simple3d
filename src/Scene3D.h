@@ -18,11 +18,9 @@ class Scene3D: public Pivot3D
 {
 	glm::vec3 _lightPosition;
     std::shared_ptr<BoxModel> _lamp;
-    std::shared_ptr<MaterialBase> _lightSourceShader = nullptr;
 	glm::vec3 _lightAmbient;
 	glm::vec3 _lightDiffuse;
 	glm::vec3 _lightSpecular;
-	std::shared_ptr<ObjectIdMaterial> _colorMaterial;
 
 public:
 	Scene3D();

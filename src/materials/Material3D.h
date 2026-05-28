@@ -6,6 +6,7 @@
 
 #include "filters/Filter3d.h"
 
+class ILightingModel;
 class Shader;
 class Texture2D;
 class Mesh;
@@ -21,8 +22,9 @@ public:
 	void Bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
 	void Unbind() override;
     void AddFilter(const std::shared_ptr<Filter3D>& filter);
+    void SetLightingModel(std::unique_ptr<ILightingModel> model) { _lighting = std::move(model); }
     const FiltersList& GetFilters() const;
-    std::shared_ptr<MaterialBase> Clone() const override;
+    void Build() override;
 protected:
     const ShaderFactory::CompiledShader& BuildFragmentShader() const override;
 private:
@@ -31,4 +33,5 @@ private:
 
     FiltersList _filters;
     unsigned int _nextUniformId = 0;
+    std::unique_ptr<ILightingModel> _lighting;
 };

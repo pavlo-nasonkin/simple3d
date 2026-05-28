@@ -126,7 +126,7 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
     std::shared_ptr<Material3D> mat;
     if (hasBones)
     {
-       mat = std::make_shared<SkinnedMaterial3D>("../assets/shaders/shader_skin.vs", "../assets/shaders/default.fs");
+       mat = std::make_shared<SkinnedMaterial3D>("../assets/shaders/shader_skin.vs", "../assets/shaders/defaultColorLight.fs");
        auto skinnedMat = std::dynamic_pointer_cast<SkinnedMaterial3D>(mat);
        skinnedMat->transforms = _transforms;
     }
@@ -136,8 +136,8 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
 
 
     std::string name = "Material ";
-    name.append(std::to_string(mat->id()));
-    mat->setName(name);
+    name.append(std::to_string(mat->GetId()));
+    mat->SetName(name);
 
 	// Process material
     if (scene->mNumMaterials > 0)

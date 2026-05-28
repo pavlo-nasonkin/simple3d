@@ -126,11 +126,11 @@
   - Альтернатива: ключ кэша программ — кортеж (vs‑источник + fs‑источник **после** применения фильтров).
   - Файлы: `src/materials/ShaderFactory.*`, `src/Material3D.cpp`.
 
-- [ ] **3.4. Кэшировать `glGetUniformLocation`.** Сейчас в `bind()` локации запрашиваются на каждый draw call.
+- [x] **3.4. Кэшировать `glGetUniformLocation`.** Сейчас в `bind()` локации запрашиваются на каждый draw call.
   - В `MaterialBase` завести `std::unordered_map<std::string, GLint> _uniformLocations` и lazy-кэш.
   - Файлы: `src/materials/MaterialBase.*`, `src/Material3D.cpp`, `src/materials/ColorMaterial.cpp`, `src/materials/ObjectIdMaterial.cpp`, `src/materials/SkinnedMaterial3D.cpp`.
 
-- [ ] **3.5. Базовый блок uniforms вынести в `MaterialBase::bindStandardUniforms(ctx)`.** Сейчас `Material3D::bind` и `ColorMaterial::bind` дублируют один и тот же код (view/projection/model/light).
+- [x] **3.5. Базовый блок uniforms вынести в `MaterialBase::bindStandardUniforms(ctx)`.** Сейчас `Material3D::bind` и `ColorMaterial::bind` дублируют один и тот же код (view/projection/model/light).
   - Файлы: `src/materials/MaterialBase.*`, `src/Material3D.cpp`, `src/materials/ColorMaterial.cpp`.
 
 - [ ] **3.6. Симметрия `bind`/`unbind` для GL-state.** `CullFace` должен быть сброшен в `unbind` (или, лучше, выставлен заново при каждом `bind` — без зависимости от прошлого состояния).

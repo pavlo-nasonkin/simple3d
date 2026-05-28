@@ -14,6 +14,7 @@ public:
 
     void Init() override;
     void Bind(GLuint program, GLuint firstTextureUnit) override;
+    void Unbind(GLuint program, GLuint firstTextureUnit) override;
 
     unsigned int GetUniformsCount() const override { return 1; }
 

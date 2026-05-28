@@ -10,10 +10,12 @@
 #include "ShaderFactory.h"
 #include "camera/Camera.h"
 #include "filters/Filter3d.h"
+#include "lighting/ILightingModel.h"
+#include "lighting/PhongLightingModel.h"
 #include "utils/StringUtils.h"
 
 Material3D::Material3D(const std::string &vertexShaderPath, const std::string &fragmentShaderPath)
-    :MaterialBase(vertexShaderPath, fragmentShaderPath)
+    :MaterialBase(vertexShaderPath, fragmentShaderPath), _lighting(std::make_unique<PhongLightingModel>())
 {
 
 }
@@ -21,6 +23,13 @@ Material3D::Material3D(const std::string &vertexShaderPath, const std::string &f
 const Material3D::FiltersList& Material3D::GetFilters() const
 {
     return _filters;
+}
+
+void Material3D::Build() {
+	MaterialBase::Build();
+	if (_lighting) {
+		_lighting->OnProgramBuild(_shader->GetProgram());
+	}
 }
 
 std::string Material3D::getBlendingSign(const Filter3D::BlendMode &blendMode) const
@@ -45,6 +54,16 @@ std::string Material3D::getBlendingSign(const Filter3D::BlendMode &blendMode) co
 const ShaderFactory::CompiledShader& Material3D::BuildFragmentShader() const {
 	std::string fragSource = ShaderFactory::GetShaderSource(_fragmentShaderPath);
 	InjectFilters(fragSource);
+
+	if (_lighting) {
+		StringUtils::replace(fragSource, "// __LIGHTING_DECLS__",
+							 _lighting->GetDeclarations() + "\n");
+
+		StringUtils::replace(fragSource, "// __APPLY_LIGHTING__",
+							 _lighting->GetLightingCode() + "\n");
+	}
+
+
 	return ShaderFactory::GetCompiledShaderFromSource(GL_FRAGMENT_SHADER, fragSource);
 }
 
@@ -103,55 +122,36 @@ void Material3D::Bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
 {
 	MaterialBase::Bind(ctx, mesh);
 
+	auto program = _shader->GetProgram();
 	GLuint nextUnit = 0;
     for (const auto& filter : _filters)
     {
-        filter->Bind(_shader->GetProgram(), nextUnit);
+        filter->Bind(program, nextUnit);
     	nextUnit += filter->GetUniformsCount();
     }
-	
-	GLint modelLoc = glGetUniformLocation(_shader->GetProgram(), "model");
-	GLint viewLoc = glGetUniformLocation(_shader->GetProgram(), "view");
-	GLint projectionLoc = glGetUniformLocation(_shader->GetProgram(), "projection");
-	GLint viewPosLoc = glGetUniformLocation(_shader->GetProgram(), "viewPos");
 
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(ctx.model));
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(ctx.view));
-	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(ctx.projection));
-	glUniform3f(viewPosLoc, ctx.camera->Position.x, ctx.camera->Position.y, ctx.camera->Position.z);
+	if (_lighting) {
+		_lighting->Bind(nextUnit, ctx);
+		nextUnit += _lighting->GetTextureUnitCount();
+	}
 
-
-	GLint lightPositionLoc = glGetUniformLocation(_shader->GetProgram(), "light.position");
-	GLint lightAmbientLoc = glGetUniformLocation(_shader->GetProgram(), "light.ambient");
-	GLint lightDiffuseLoc = glGetUniformLocation(_shader->GetProgram(), "light.diffuse");
-	GLint lightSpecularLoc = glGetUniformLocation(_shader->GetProgram(), "light.specular");
-	const glm::vec3* lightAmbient = ctx.scene3D->getLightAmbient();
-	const glm::vec3* lightDiffuce = ctx.scene3D->getLightDiffuse();
-	const glm::vec3* lightSpecular = ctx.scene3D->getLightSpecular();
-	const glm::vec3* lightPos = ctx.scene3D->getLightPosition();
-
-	glUniform3f(lightAmbientLoc, lightAmbient->x, lightAmbient->y, lightAmbient->z);
-	glUniform3f(lightDiffuseLoc, lightDiffuce->x, lightDiffuce->y, lightDiffuce->z); // Let's darken the light a bit to fit the scene
-	glUniform3f(lightSpecularLoc, lightSpecular->x, lightSpecular->y, lightSpecular->z);
-	glUniform3f(lightPositionLoc, lightPos->x, lightPos->y, lightPos->z);
-
-	GLint baseColorLoc = glGetUniformLocation(_shader->GetProgram(), "uBaseColor");
+	GLint baseColorLoc = _uniformCache.GetUniformLocation("uBaseColor");
 	glUniform4f(baseColorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
-
-	// Also set each mesh's shininess property to a default value (if you want you could extend this to another mesh property and possibly change this value)
-	glUniform1f(glGetUniformLocation(_shader->GetProgram(), "material.shininess"), 16.0f);
 }
 
 void Material3D::Unbind()
 {
 	MaterialBase::Unbind();
-	GLuint unit = 0;
-	for (auto& filter : _filters) {
-		for (unsigned int i = 0; i < filter->GetUniformsCount(); ++i) {
-			glActiveTexture(GL_TEXTURE0 + unit + i);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-		unit += filter->GetUniformsCount();
+	GLuint nextUnit = 0;
+	auto program = _shader->GetProgram();
+	for (const auto& filter : _filters) {
+		filter->Unbind(program, nextUnit);
+		nextUnit += filter->GetUniformsCount();
+	}
+
+	if (_lighting) {
+		_lighting->Unbind(nextUnit);
+		nextUnit += _lighting->GetTextureUnitCount();
 	}
 }
 
@@ -165,16 +165,4 @@ void Material3D::AddFilter(const std::shared_ptr<Filter3D>& filter)
     	_nextUniformId += filter->GetUniformsCount();
         _filters.push_back(filter);
     }
-}
-
-std::shared_ptr<MaterialBase> Material3D::Clone() const
-{
-	//TODO
-    auto result = std::make_shared<Material3D>(*this);
-    // result->setId(_idCounter);
-    // _idCounter++;
-    // auto shaderCopy = std::make_shared<Shader>(*_shader);
-    // shaderCopy->Program = 0;
-    // result->setShader(shaderCopy);
-    return result;
 }

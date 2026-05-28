@@ -24,6 +24,11 @@ set(SOURCE_FILES
         src/input/KeyboardInput.h
         src/input/MouseInput.cpp
         src/input/MouseInput.h
+        src/lighting/ILightingModel.h
+        src/lighting/PhongLightingModel.cpp
+        src/lighting/PhongLightingModel.h
+        src/lighting/UnlitLightingModel.cpp
+        src/lighting/UnlitLightingModel.h
         src/materials/ColorMaterial.cpp
         src/materials/ColorMaterial.h
         src/materials/MaterialBase.cpp
@@ -48,6 +53,8 @@ set(SOURCE_FILES
         src/object_selector/ObjectSelector.h
         src/render/RenderModeHelper.cpp
         src/render/RenderModeHelper.h
+        src/render/UniformsLocationCache.cpp
+        src/render/UniformsLocationCache.h
         src/resources/Texture2D.cpp
         src/resources/Texture2D.h
         src/resources/TextureManager.cpp

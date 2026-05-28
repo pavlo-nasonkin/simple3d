@@ -81,7 +81,7 @@ int main() {
 
 
 
-		scene3D->AddChild(box);
+		// scene3D->AddChild(box);
 		box->AddChild(box2);
 
 		glfwSetWindowUserPointer(window, camera.get());

@@ -65,7 +65,8 @@ public:
 	~Mesh() override;
 	// Render the mesh
     void Render(const RenderContext &ctx, MaterialBase* material) override;
-    std::shared_ptr<MaterialBase> GetMaterial() const;
+    const std::shared_ptr<MaterialBase>& GetMaterial() const { return _material; }
+	void SetMaterial(const std::shared_ptr<MaterialBase>& material) { _material = material; }
 
 private:
 	void SetupMesh();
