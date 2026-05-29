@@ -109,8 +109,11 @@ void Pivot3D::SetScale(float x, float y, float z)
 	_scale.z = z;
 }
 
-void Pivot3D::Translate(float /*x*/, float /*y*/, float /*z*/)
+void Pivot3D::Translate(float x, float y, float z)
 {
+	_position.x += x;
+	_position.y += y;
+	_position.z += z;
 }
 
 void Pivot3D::Rotate(float x, float y, float z)
@@ -121,13 +124,16 @@ void Pivot3D::Rotate(float x, float y, float z)
 	// this->_model = glm::rotate(_model, angle, glm::vec3(x, y, z));
 }
 
-void Pivot3D::Scale(float /*x*/, float /*y*/, float /*z*/)
+void Pivot3D::Scale(float x, float y, float z)
 {
+	_scale.x *= x;
+	_scale.y *= y;
+	_scale.z *= z;
 }
 
 std::shared_ptr<Pivot3D> Pivot3D::GetChildById(unsigned int id, bool recursive /*= true*/)
 {
-    for (auto child : _children)
+    for (const auto& child : _children)
 	{
         if (child->GetId() == id)
 		{
@@ -136,10 +142,9 @@ std::shared_ptr<Pivot3D> Pivot3D::GetChildById(unsigned int id, bool recursive /
 	}
 
 	if (recursive) {
-        for (auto child : _children)
+        for (const auto& child : _children)
 		{
-            auto found = child->GetChildById(id, true);
-            if (found) {
+			if (const auto& found = child->GetChildById(id, true)) {
 				return found;
 			}
 		}
@@ -166,7 +171,7 @@ void Pivot3D::SetId(unsigned int id)
 	_id = id;
 }
 
-std::string Pivot3D::Name() const
+const std::string& Pivot3D::GetName() const
 {
     return _name;
 }

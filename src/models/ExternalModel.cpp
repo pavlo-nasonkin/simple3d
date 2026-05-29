@@ -12,6 +12,7 @@
 #include "materials/filters/TextureMapFilter.h"
 #include "Scene3D.h"
 #include "materials/filters/NormalMapFilter.h"
+#include "render/VertexLayoutPresets.h"
 #include "utils/Math3d.h"
 
 ExternalModel::ExternalModel(const std::string& path):
@@ -72,15 +73,15 @@ void ExternalModel::ProcessNode(aiNode * node, const aiScene * scene)
 
 std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * scene)
 {
-    std::vector<Vertex> vertices;
+    std::vector<VertexTypes::Vertex> vertices;
     std::vector<GLuint> indices;
     std::vector<std::shared_ptr<Texture2D>> textures;
-    std::vector<VertexBoneData> bones;
+    std::vector<VertexTypes::VertexBoneData> bones;
     bool hasBones = mesh->mNumBones > 0;
 
 	for (GLuint i = 0; i < mesh->mNumVertices; i++)
 	{
-		Vertex vertex;
+        VertexTypes::Vertex vertex;
 		// Process vertex positions, normals and texture coordinates
 		glm::vec3 vector;
 		vector.x = mesh->mVertices[i].x;
@@ -182,7 +183,12 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
 
     mat->Build();
     auto m = std::make_shared<Mesh>(mat);
-    m->SetupMesh(vertices, indices, bones);
+    m->SetupMesh(VertexLayouts::Standard(), std::as_bytes(std::span(vertices)), std::span(indices));
+
+    if (!bones.empty()) {
+        m->AddSecondaryBuffer(VertexLayouts::Skinning(), std::as_bytes(std::span(bones)));
+    }
+
     m->SetName(mesh->mName.C_Str());
     return m;
 }
@@ -204,7 +210,7 @@ std::vector<std::shared_ptr<Texture2D>> ExternalModel::LoadMaterialTextures(aiMa
 	return textures;
 }
 
-void ExternalModel::AddBoneData(VertexBoneData& data, unsigned int boneID, float weight)
+void ExternalModel::AddBoneData(VertexTypes::VertexBoneData& data, unsigned int boneID, float weight)
 {
     auto size = sizeof(data.IDs)/sizeof(data.IDs[0]);
     for (unsigned int i = 0 ; i < size ; i++) {
@@ -219,7 +225,7 @@ void ExternalModel::AddBoneData(VertexBoneData& data, unsigned int boneID, float
     assert(0);
 }
 
-void ExternalModel::LoadBones(unsigned int /*MeshIndex*/, const aiMesh* pMesh, std::vector<VertexBoneData>& bones)
+void ExternalModel::LoadBones(unsigned int /*MeshIndex*/, const aiMesh* pMesh, std::vector<VertexTypes::VertexBoneData>& bones)
 {
     for (unsigned int i = 0 ; i < pMesh->mNumBones; i++) {
         unsigned int boneIndex = 0;

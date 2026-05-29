@@ -4,6 +4,7 @@
 #include "Mesh.h"
 #include <GL/glew.h>
 #include "Model.h"
+#include "render/VertexTypes.h"
 
 class ColorFilter;
 class Material3D;
@@ -15,14 +16,14 @@ class BoxModel: public Model
 
 private:
 	
-	static std::vector<Vertex> boxVertices;
+	static std::vector<VertexTypes::Vertex> boxVertices;
 	static std::vector<GLuint> boxIndices;
 
 	unsigned int _color = 0x000000FF;
 	std::shared_ptr<ColorFilter> _colorFilter;
 public:
 	BoxModel();
-	~BoxModel() override;
+	~BoxModel() override = default;
     void Init() override;
     std::shared_ptr<Mesh> ProcessMesh();
 

@@ -133,7 +133,7 @@
 - [x] **3.5. Базовый блок uniforms вынести в `MaterialBase::bindStandardUniforms(ctx)`.** Сейчас `Material3D::bind` и `ColorMaterial::bind` дублируют один и тот же код (view/projection/model/light).
   - Файлы: `src/materials/MaterialBase.*`, `src/Material3D.cpp`, `src/materials/ColorMaterial.cpp`.
 
-- [ ] **3.6. Симметрия `bind`/`unbind` для GL-state.** `CullFace` должен быть сброшен в `unbind` (или, лучше, выставлен заново при каждом `bind` — без зависимости от прошлого состояния).
+- [x] **3.6. Симметрия `bind`/`unbind` для GL-state.** `CullFace` должен быть сброшен в `unbind` (или, лучше, выставлен заново при каждом `bind` — без зависимости от прошлого состояния).
   - Файл: `src/materials/MaterialBase.cpp`.
 
 ---
@@ -172,9 +172,9 @@
 
 - [ ] **5.7. Перенести GLFW-адаптеры.** `GLFWKeyboardInput.*` и `GLFWMouseInput.*` из корня проекта в `src/platform/glfw/`.
 
-- [ ] **5.8. `Pivot3D::translate`/`scale` пустые.** Либо реализовать (накопительный сдвиг/масштаб), либо удалить.
+- [x] **5.8. `Pivot3D::translate`/`scale` пустые.** Либо реализовать (накопительный сдвиг/масштаб), либо удалить.
 
-- [ ] **5.9. Расширяемый `Vertex`.** Описать `VertexAttribute`/`VertexLayout`, чтобы материал/меш могли работать с разными форматами вершин (для будущего PBR — добавить tangent/uv2/color).
+- [x] **5.9. Расширяемый `Vertex`.** Описать `VertexAttribute`/`VertexLayout`, чтобы материал/меш могли работать с разными форматами вершин (для будущего PBR — добавить tangent/uv2/color).
 
 ---
 

@@ -4,8 +4,10 @@ out vec4 color;
 
 in vec3 FragPos;  
 in vec3 Normal;  
-in vec2 TexCoords;
+in vec2 TexCoords0;
+in vec2 TexCoords1;
 in mat3 TBN;
+in vec4 Color;
 
 uniform vec4 uBaseColor;
 

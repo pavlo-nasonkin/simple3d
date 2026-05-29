@@ -29,7 +29,7 @@ void Scene3D::initLightView()
     _lamp->Init();
 	_lamp->SetScale(0.1f, 0.1f, 0.1f);
 	_lamp->SetPosition(_lightPosition.x, _lightPosition.y, _lightPosition.z);
-    AddChild(_lamp);
+    // AddChild(_lamp);
 }
 
 void Scene3D::update()

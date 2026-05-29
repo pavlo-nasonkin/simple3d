@@ -5,7 +5,7 @@ std::string TextureMapFilter::_filterCode =
         "uniform sampler2D uSampler{uniform_id};\n"
         "vec4 textureMapFilter{id}()\n"
         "{\n"
-        "    return texture(uSampler{uniform_id}, TexCoords);\n"
+        "    return texture(uSampler{uniform_id}, TexCoords0);\n"
         "}\n";
 
 TextureMapFilter::TextureMapFilter(const std::shared_ptr<Texture2D>& texture):

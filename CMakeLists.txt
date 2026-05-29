@@ -55,6 +55,11 @@ set(SOURCE_FILES
         src/render/RenderModeHelper.h
         src/render/UniformsLocationCache.cpp
         src/render/UniformsLocationCache.h
+        src/render/VertexAttribute.h
+        src/render/VertexAttributeLocations.h
+        src/render/VertexLayout.h
+        src/render/VertexLayoutPresets.h
+        src/render/VertexTypes.h
         src/resources/Texture2D.cpp
         src/resources/Texture2D.h
         src/resources/TextureManager.cpp

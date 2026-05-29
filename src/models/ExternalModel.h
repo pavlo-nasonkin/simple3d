@@ -19,6 +19,10 @@
 #include "../materials/SkinnedMaterial3D.h"
 #include <assimp/Importer.hpp>
 
+namespace VertexTypes {
+	struct VertexBoneData;
+}
+
 struct BoneInfo
 {
     Matrix4f BoneOffset;
@@ -58,11 +62,11 @@ private:
     void ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, const Matrix4f& ParentTransform);
     void CalcInterpolatedRotation(aiQuaternion& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
     unsigned int FindRotation(float AnimationTime, const aiNodeAnim* pNodeAnim);
-    void LoadBones(unsigned int MeshIndex, const aiMesh* pMesh, std::vector<VertexBoneData>& bones);
+    void LoadBones(unsigned int MeshIndex, const aiMesh* pMesh, std::vector<VertexTypes::VertexBoneData>& bones);
     const aiNodeAnim* FindNodeAnim(const aiAnimation* pAnimation, const std::string& nodeName);
     void CalcInterpolatedScaling(aiVector3D& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
     void CalcInterpolatedPosition(aiVector3D& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
     unsigned int FindScaling(float AnimationTime, const aiNodeAnim* pNodeAnim);
     unsigned int FindPosition(float AnimationTime, const aiNodeAnim* pNodeAnim);
-    void AddBoneData(VertexBoneData& data, unsigned int boneID, float weight);
+    void AddBoneData(VertexTypes::VertexBoneData& data, unsigned int boneID, float weight);
 };

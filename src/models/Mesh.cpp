@@ -5,6 +5,8 @@
 #include "utils/Math3d.h"
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "render/VertexLayout.h"
+
 Mesh::Mesh(const std::shared_ptr<MaterialBase>& mat) :
     _material(mat)
 {
@@ -39,44 +41,27 @@ void Mesh::Render(const RenderContext &ctx, MaterialBase* material)
 /*  Functions    */
 // Initializes all the buffer objects/arrays
 
-void Mesh::SetupMesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::vector<VertexBoneData>& bones)
+void Mesh::SetupMesh(const VertexLayout& vertexLayout, std::span<const std::byte> vertexData, std::span<const GLuint> indices)
 {
     _vao.Bind();
     {
         // Load data into vertex buffers
-        _vbo.SetData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+        _vbo.SetData(GL_ARRAY_BUFFER, vertexData.size_bytes(), vertexData.data(), GL_STATIC_DRAW);
 
-        _ebo.SetData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+        vertexLayout.Apply();
+
+        _ebo.SetData(GL_ELEMENT_ARRAY_BUFFER, indices.size_bytes(), indices.data(), GL_STATIC_DRAW);
         _indicesCount = static_cast<GLsizei>(indices.size());
-
-        // Set the vertex attribute pointers
-        // Vertex Positions
-        glEnableVertexAttribArray(VERTEX_ID_LOCATION);
-        glVertexAttribPointer(VERTEX_ID_LOCATION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
-        // Vertex Normals
-        glEnableVertexAttribArray(NORMAL_ID_LOCATION);
-        glVertexAttribPointer(NORMAL_ID_LOCATION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Normal));
-        // Vertex Texture Coords
-        glEnableVertexAttribArray(UV_ID_LOCATION);
-        glVertexAttribPointer(UV_ID_LOCATION, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, TexCoords));
-
-        glEnableVertexAttribArray(TANGENT_ID_LOCATION);
-        glVertexAttribPointer(TANGENT_ID_LOCATION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Tangent));
-        if (!bones.empty())
-        {
-            _bonesVbo.emplace();
-            _bonesVbo->SetData(GL_ARRAY_BUFFER, sizeof(VertexBoneData) * bones.size(), bones.data(), GL_STATIC_DRAW);
-
-            glEnableVertexAttribArray(BONE_ID_LOCATION);
-            glVertexAttribIPointer(BONE_ID_LOCATION, 4, GL_INT, sizeof(VertexBoneData), (const GLvoid*)0);
-
-            glEnableVertexAttribArray(BONE_WEIGHT_LOCATION);
-            glVertexAttribPointer(BONE_WEIGHT_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(VertexBoneData), (const GLvoid*)offsetof(VertexBoneData, Weights));
-        }
-        else
-        {
-            _bonesVbo.reset();
-        }
     }
+    GLVertexArray::Unbind();
+}
+
+void Mesh::AddSecondaryBuffer(const VertexLayout &layout, std::span<const std::byte> data)
+{
+    _vao.Bind();
+    SecondaryBuffer buffer {{}, layout};
+    auto& secondary = _secondaryVbos.emplace_back(GLBuffer{}, layout);
+    secondary.buffer.SetData(GL_ARRAY_BUFFER, data.size_bytes(), data.data(), GL_STATIC_DRAW);
+    layout.Apply();
     GLVertexArray::Unbind();
 }
