@@ -181,7 +181,8 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
     }
 
     mat->Build();
-    auto m = std::make_shared<Mesh>(vertices, indices, mat, bones);
+    auto m = std::make_shared<Mesh>(mat);
+    m->SetupMesh(vertices, indices, bones);
     m->SetName(mesh->mName.C_Str());
     return m;
 }

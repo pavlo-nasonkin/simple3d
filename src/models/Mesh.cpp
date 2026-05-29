@@ -5,24 +5,14 @@
 #include "utils/Math3d.h"
 #include <glm/gtc/matrix_transform.hpp>
 
-Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::shared_ptr<MaterialBase>& mat, const std::vector<VertexBoneData>& bones) :
-    _vertices(vertices),
-    _indices(indices),
-    _bones(bones),
+Mesh::Mesh(const std::shared_ptr<MaterialBase>& mat) :
     _material(mat)
 {
-    _hasBones = !bones.empty();
+    assert(mat && "Mesh requires a non-null material");
     _name = "Mesh";
-	// Now that we have all the required data, set the vertex buffers and its attribute pointers.
-	SetupMesh();
-}
-
-Mesh::~Mesh() {
-
 }
 
 // Render the mesh
-
 void Mesh::Render(const RenderContext &ctx, MaterialBase* material)
 {
     RenderContext context =  ctx;
@@ -31,11 +21,15 @@ void Mesh::Render(const RenderContext &ctx, MaterialBase* material)
         material = _material.get();
     }
 
-    material->Bind(context, this);
-    glBindVertexArray(vertexAttributesArray);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(_indices.size()), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-    material->Unbind();
+    if (_indicesCount > 0) {
+        material->Bind(context, this);
+
+        _vao.Bind();
+        glDrawElements(GL_TRIANGLES, _indicesCount, GL_UNSIGNED_INT, 0);
+        GLVertexArray::Unbind();
+
+        material->Unbind();
+    }
 
     for (auto& child : _children) {
         child->Render(context, material);
@@ -45,33 +39,15 @@ void Mesh::Render(const RenderContext &ctx, MaterialBase* material)
 /*  Functions    */
 // Initializes all the buffer objects/arrays
 
-void Mesh::SetupMesh()
+void Mesh::SetupMesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::vector<VertexBoneData>& bones)
 {
-    // Create buffers/arrays
-    glGenVertexArrays(1, &vertexAttributesArray);
-    glGenBuffers(1, &vertexArrayBuffer);
-    glGenBuffers(1, &elementArrayBuffer);
-
-    if (_hasBones)
-    {
-        glGenBuffers(1, &boneArrayBuffer);
-        glCheckError();
-    }
-
-    glBindVertexArray(vertexAttributesArray);
+    _vao.Bind();
     {
         // Load data into vertex buffers
-        glBindBuffer(GL_ARRAY_BUFFER, vertexArrayBuffer);
-        // A great thing about structs is that their memory layout is sequential for all its items.
-        // The effect is that we can simply pass a pointer to the struct and it translates perfectly to a glm::vec3/2 array which
-        // again translates to 3/2 floats which translates to a byte array.
-        glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(Vertex), &_vertices[0], GL_STATIC_DRAW);
+        _vbo.SetData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 
-
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementArrayBuffer);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, _indices.size() * sizeof(GLuint), &_indices[0], GL_STATIC_DRAW);
-
+        _ebo.SetData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+        _indicesCount = static_cast<GLsizei>(indices.size());
 
         // Set the vertex attribute pointers
         // Vertex Positions
@@ -86,18 +62,21 @@ void Mesh::SetupMesh()
 
         glEnableVertexAttribArray(TANGENT_ID_LOCATION);
         glVertexAttribPointer(TANGENT_ID_LOCATION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Tangent));
-        if (_hasBones)
+        if (!bones.empty())
         {
-            glBindBuffer(GL_ARRAY_BUFFER, boneArrayBuffer);
+            _bonesVbo.emplace();
+            _bonesVbo->SetData(GL_ARRAY_BUFFER, sizeof(VertexBoneData) * bones.size(), bones.data(), GL_STATIC_DRAW);
 
-            glBufferData(GL_ARRAY_BUFFER, sizeof(_bones[0]) * _bones.size(), &_bones[0], GL_STATIC_DRAW);
             glEnableVertexAttribArray(BONE_ID_LOCATION);
             glVertexAttribIPointer(BONE_ID_LOCATION, 4, GL_INT, sizeof(VertexBoneData), (const GLvoid*)0);
 
             glEnableVertexAttribArray(BONE_WEIGHT_LOCATION);
-            glVertexAttribPointer(BONE_WEIGHT_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(VertexBoneData), (const GLvoid*)16);
+            glVertexAttribPointer(BONE_WEIGHT_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(VertexBoneData), (const GLvoid*)offsetof(VertexBoneData, Weights));
         }
-
+        else
+        {
+            _bonesVbo.reset();
+        }
     }
-    glBindVertexArray(0);
+    GLVertexArray::Unbind();
 }

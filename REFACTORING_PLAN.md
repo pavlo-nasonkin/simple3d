@@ -87,7 +87,7 @@
   - Файлы: `src/Pivot3D.h/.cpp`, `src/Scene3D.cpp`, `src/Mesh.cpp`, `src/ExternalModel.cpp`, `src/Model.cpp`.
   - Проверка: вложенный куб (`scene.addChild(parent); parent->addChild(child); child.setPosition(...)`) рендерится со сложением координат.
 
-- [ ] **2.5. Удалять GL-ресурсы в деструкторах.**
+- [x] **2.5. Удалять GL-ресурсы в деструкторах.**
   - `Mesh::~Mesh`: `glDeleteVertexArrays(1, &vertexAttributesArray); glDeleteBuffers(...)`.
   - `Shader::~Shader`: `glDeleteProgram(Program)` (с защитой `if (Program != 0)`).
   - Запретить копирование `Shader` (или сделать move-only), чтобы не было двойного `glDeleteProgram` той же программы.
@@ -163,7 +163,7 @@
 
 - [x] **5.3. `std::string` → `std::string_view`** в сигнатурах геттеров/сеттеров и аргументах кэшей (`TextureManager`, `EventDispatcher`, `ShaderFactory`).
 
-- [ ] **5.4. `Mesh` владеет своими ресурсами, а не «голыми» `GLuint`.** Завести `class GLBuffer` / `class GLVertexArray` RAII-обёртки (или `std::unique_ptr` с кастомным deleter’ом).
+- [x] **5.4. `Mesh` владеет своими ресурсами, а не «голыми» `GLuint`.** Завести `class GLBuffer` / `class GLVertexArray` RAII-обёртки (или `std::unique_ptr` с кастомным deleter’ом).
 
 - [ ] **5.5. Унифицировать математику на GLM.** Удалить `Vector3f`/`Vector4f`/`Matrix4f`/`Quaternion` из `Math3d.h`, перевести скиннинг на `glm::mat4`/`glm::quat`. Помощник для конвертации `aiMatrix4x4 → glm::mat4`.
   - Файлы: `src/utils/Math3d.*`, `src/ExternalModel.cpp`, `src/materials/SkinnedMaterial3D.cpp`.

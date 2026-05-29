@@ -33,7 +33,8 @@ std::shared_ptr<Mesh> BoxModel::ProcessMesh()
 	_colorFilter->SetBlendMode(Filter3D::BlendMode::ADD);
     mat->AddFilter(_colorFilter);
     mat->Build();
-    auto mesh = std::make_shared<Mesh>(boxVertices, boxIndices, mat, std::vector<VertexBoneData>());
+    auto mesh = std::make_shared<Mesh>(mat);
+	mesh->SetupMesh(boxVertices, boxIndices, {});
     mesh->SetName(std::string("Box") + std::to_string(mesh->GetId()));
     return mesh;
 }

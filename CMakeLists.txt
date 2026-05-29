@@ -82,7 +82,8 @@ set(SOURCE_FILES
         src/models/Model.h
         src/Pivot3D.cpp
         src/Pivot3D.h
-        src/render/RenderContext.h
+        src/render/GLBuffer.h
+        src/render/GLVertexArray.h
         src/Scene3D.cpp
         src/Scene3D.h
         src/Shader.cpp

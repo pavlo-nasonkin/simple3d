@@ -12,8 +12,11 @@
 #include "resources/Texture2D.h"
 #include "materials/MaterialBase.h"
 #include <memory>
-#include "Pivot3D.h"
+#include <optional>
 
+#include "Pivot3D.h"
+#include "render/GLBuffer.h"
+#include "render/GLVertexArray.h"
 
 
 enum AttribPointer{
@@ -44,30 +47,20 @@ struct VertexBoneData
 
 class Mesh: public Pivot3D {
 
-    bool _hasBones = false;
-
-    /*  Render data  */
-    GLuint vertexAttributesArray{};
-    GLuint vertexArrayBuffer{};
-    GLuint elementArrayBuffer{};
-    GLuint boneArrayBuffer{};
-
+	GLVertexArray _vao;
+	GLBuffer _vbo;
+	GLBuffer _ebo;
+	std::optional<GLBuffer> _bonesVbo;
+	std::shared_ptr<MaterialBase> _material;
+	GLsizei _indicesCount = 0;
 public:
-	/*  Mesh Data  */
-    std::vector<Vertex> _vertices;
-    std::vector<GLuint> _indices;
-    std::vector<VertexBoneData> _bones;
-    std::shared_ptr<MaterialBase> _material;
-
 	/*  Functions  */
 	// Constructor
-    Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::shared_ptr<MaterialBase>& mat, const std::vector<VertexBoneData>& bones);
-	~Mesh() override;
+    Mesh(const std::shared_ptr<MaterialBase>& mat);
+	~Mesh() override = default;
 	// Render the mesh
     void Render(const RenderContext &ctx, MaterialBase* material) override;
     const std::shared_ptr<MaterialBase>& GetMaterial() const { return _material; }
 	void SetMaterial(const std::shared_ptr<MaterialBase>& material) { _material = material; }
-
-private:
-	void SetupMesh();
+	void SetupMesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::vector<VertexBoneData>& bones);
 };
