@@ -1,5 +1,5 @@
 #include "SkinnedMaterial3D.h"
-#include "Shader.h"
+#include "glm/gtc/type_ptr.hpp"
 #include "models/ExternalModel.h"
 
 SkinnedMaterial3D::SkinnedMaterial3D(const std::string &vertexShaderPath, const std::string &fragmentShaderPath):
@@ -8,12 +8,11 @@ SkinnedMaterial3D::SkinnedMaterial3D(const std::string &vertexShaderPath, const 
 
 }
 
-void SkinnedMaterial3D::SetBoneTransform(unsigned int index, const Matrix4f &transform)
+void SkinnedMaterial3D::SetBoneTransform(unsigned int index, const glm::mat4& transform)
 {
-    const auto& shader = GetShader();
     std::string name = std::string("gBones[") + std::to_string(index) + std::string("]");
     GLuint boneLocation = _uniformCache.GetUniformLocation(name);
-    glUniformMatrix4fv(boneLocation, 1, GL_TRUE, (const GLfloat*)transform.m);
+    glUniformMatrix4fv(boneLocation, 1, GL_FALSE, glm::value_ptr(transform));
 }
 
 void SkinnedMaterial3D::Bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)

@@ -11,15 +11,28 @@
 #include <glm/glm.hpp>
 #include "materials/filters/TextureMapFilter.h"
 #include "Scene3D.h"
+#include "glm/gtc/matrix_transform.hpp"
+#include "materials/SkinnedMaterial3D.h"
 #include "materials/filters/NormalMapFilter.h"
 #include "render/VertexLayoutPresets.h"
-#include "utils/Math3d.h"
+#include "utils/AssimpGlm.h"
+
+namespace {
+    std::string NormalizeTexturePath(const std::string& raw) {
+        std::string p = raw;
+        for (auto& c : p) if (c == '\\') c = '/';
+        if (p.size() >= 2 && p[0] == '.' && p[1] == '/') {
+            p.erase(0, 2);
+        }
+        return p;
+    }
+}
 
 ExternalModel::ExternalModel(const std::string& path):
     _path(path)
 {
     _name = "ExternalModel";
-    _transforms = std::make_shared<std::vector<Matrix4f>>();
+    _transforms = std::make_shared<std::vector<glm::mat4>>();
 }
 
 void ExternalModel::Render(const RenderContext& ctx, MaterialBase* material /*= nullptr*/)
@@ -30,11 +43,6 @@ void ExternalModel::Render(const RenderContext& ctx, MaterialBase* material /*= 
     Pivot3D::Render(ctx, material);
 }
 
-ExternalModel::~ExternalModel()
-{
-
-}
-
 void ExternalModel::Init()
 {
     LoadModel(_path);
@@ -42,32 +50,35 @@ void ExternalModel::Init()
 
 void ExternalModel::LoadModel(const std::string& path)
 {
-    _scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    _scene = _import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
     if (!_scene || _scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !_scene->mRootNode)
 	{
-        std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
+        std::cout << "ERROR::ASSIMP::" << _import.GetErrorString() << std::endl;
 		return;
 	}
     _directory = path.substr(0, path.find_last_of('/'));
-    m_GlobalInverseTransform = _scene->mRootNode->mTransformation;
-    m_GlobalInverseTransform.Inverse();
+    m_GlobalInverseTransform = ToGlm(_scene->mRootNode->mTransformation);
+    m_GlobalInverseTransform = glm::inverse(m_GlobalInverseTransform);
 
-    ProcessNode(_scene->mRootNode, _scene);
+    aiMatrix4x4 identity;
+    ProcessNode(_scene->mRootNode, _scene, identity);
 }
 
-void ExternalModel::ProcessNode(aiNode * node, const aiScene * scene)
+void ExternalModel::ProcessNode(aiNode * node, const aiScene * scene, const aiMatrix4x4& parentTransform)
 {
-    // Process all the node's meshes (if any)
+    aiMatrix4x4 nodeTransform = parentTransform * node->mTransformation;
+
     for (GLuint i = 0; i < node->mNumMeshes; i++)
     {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        AddChild(ProcessMesh(mesh, scene));
+        auto m = ProcessMesh(mesh, scene);
+        m->SetNodeMatrix(ToGlm(nodeTransform));
+        AddChild(m);
     }
-    // Then do the same for each of its children
     for (GLuint i = 0; i < node->mNumChildren; i++)
     {
-        this->ProcessNode(node->mChildren[i], scene);
+        ProcessNode(node->mChildren[i], scene, nodeTransform);
     }
 }
 
@@ -127,12 +138,12 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
     std::shared_ptr<Material3D> mat;
     if (hasBones)
     {
-       mat = std::make_shared<SkinnedMaterial3D>("../assets/shaders/shader_skin.vs", "../assets/shaders/defaultColorLight.fs");
+       mat = std::make_shared<SkinnedMaterial3D>("../assets/shaders/shader_skin.vsh", "../assets/shaders/defaultColorLight.fsh");
        auto skinnedMat = std::dynamic_pointer_cast<SkinnedMaterial3D>(mat);
        skinnedMat->transforms = _transforms;
     }
     else {
-        mat = std::make_shared<Material3D>("../assets/shaders/shader.vs", "../assets/shaders/defaultColorLight.fs");
+        mat = std::make_shared<Material3D>("../assets/shaders/shader.vsh", "../assets/shaders/defaultColorLight.fsh");
     }
 
 
@@ -202,7 +213,8 @@ std::vector<std::shared_ptr<Texture2D>> ExternalModel::LoadMaterialTextures(aiMa
 	{
 		aiString texturePath;
 		mat->GetTexture(type, i, &texturePath);
-        auto texture = Engine::GetInstance().GetTextureManager()->getTexture(texturePath.C_Str(), typeName, _directory);
+		const std::string normalized = NormalizeTexturePath(texturePath.C_Str());
+        auto texture = Engine::GetInstance().GetTextureManager()->getTexture(normalized, typeName, _directory);
 		if (texture != nullptr) {
 			textures.push_back(texture);
 		}
@@ -212,7 +224,7 @@ std::vector<std::shared_ptr<Texture2D>> ExternalModel::LoadMaterialTextures(aiMa
 
 void ExternalModel::AddBoneData(VertexTypes::VertexBoneData& data, unsigned int boneID, float weight)
 {
-    auto size = sizeof(data.IDs)/sizeof(data.IDs[0]);
+    auto size = std::size(data.IDs);
     for (unsigned int i = 0 ; i < size ; i++) {
         if (data.Weights[i] == 0.0) {
             data.IDs[i] = boneID;
@@ -242,7 +254,7 @@ void ExternalModel::LoadBones(unsigned int /*MeshIndex*/, const aiMesh* pMesh, s
         }
 
         _boneMapping[boneName] = boneIndex;
-        _boneInfos[boneIndex].BoneOffset = pMesh->mBones[i]->mOffsetMatrix;
+        _boneInfos[boneIndex].BoneOffset = ToGlm(pMesh->mBones[i]->mOffsetMatrix);
 
         for (unsigned int j = 0 ; j < pMesh->mBones[i]->mNumWeights ; j++) {
             //m_Entries? BaseVertex
@@ -255,21 +267,20 @@ void ExternalModel::LoadBones(unsigned int /*MeshIndex*/, const aiMesh* pMesh, s
     }
 }
 
-void ExternalModel::BoneTransform(float TimeInSeconds, std::shared_ptr<std::vector<Matrix4f>> transforms)
+void ExternalModel::BoneTransform(float timeSec, const std::shared_ptr<std::vector<glm::mat4>>& transforms)
 {
     if (_scene->mNumAnimations == 0) {
         return;
     }
-    Matrix4f identity;
-    identity.InitIdentity();
+    glm::mat4 identity(1.0f);
 
-    float TicksPerSecond = _scene->mAnimations[0]->mTicksPerSecond != 0 ?
+    float ticksPerSecond = _scene->mAnimations[0]->mTicksPerSecond != 0 ?
                             _scene->mAnimations[0]->mTicksPerSecond : 25.0f;
 
-    float TimeInTicks = TimeInSeconds * TicksPerSecond;
-    float AnimationTime = fmod(TimeInTicks, _scene->mAnimations[0]->mDuration);
+    float timeInTicks = timeSec * ticksPerSecond;
+    float animationTime = fmod(timeInTicks, _scene->mAnimations[0]->mDuration);
 
-    ReadNodeHeirarchy(AnimationTime, _scene->mRootNode, identity);
+    ReadNodeHierarchy(animationTime, _scene->mRootNode, identity);
 
     transforms->resize(_numBones);
 
@@ -278,81 +289,49 @@ void ExternalModel::BoneTransform(float TimeInSeconds, std::shared_ptr<std::vect
     }
 }
 
-void ExternalModel::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, const Matrix4f& ParentTransform)
+void ExternalModel::ReadNodeHierarchy(float t, const aiNode* pNode, const glm::mat4& parentTransform)
 {
-    if (_scene->mNumAnimations == 0) {
-        return;
-    }
     std::string NodeName(pNode->mName.data);
 
     const aiAnimation* pAnimation = _scene->mAnimations[0];
 
-    Matrix4f NodeTransformation(pNode->mTransformation);
+    glm::mat4 nodeTransformation = ToGlm(pNode->mTransformation);
 
-    const aiNodeAnim* pNodeAnim = FindNodeAnim(pAnimation, NodeName);
-
-    if (pNodeAnim) {
+    if (const aiNodeAnim* pNodeAnim = FindNodeAnim(pAnimation, NodeName)) {
         // Interpolate scaling and generate scaling transformation matrix
-        aiVector3D Scaling;
-        CalcInterpolatedScaling(Scaling, AnimationTime, pNodeAnim);
-        Matrix4f ScalingM;
-        ScalingM.InitScaleTransform(Scaling.x, Scaling.y, Scaling.z);
+        glm::vec3 scaling = CalcInterpolatedScaling(t, pNodeAnim);
+        glm::mat4 scalingM = glm::scale(glm::mat4(1.0f), scaling);
 
         // Interpolate rotation and generate rotation transformation matrix
-        aiQuaternion RotationQ;
-        CalcInterpolatedRotation(RotationQ, AnimationTime, pNodeAnim);
-        Matrix4f RotationM = aiMatrix4x4(RotationQ.GetMatrix());
+        glm::mat4 rotationM = glm::mat4_cast(CalcInterpolatedRotation(t, pNodeAnim));
 
         // Interpolate translation and generate translation transformation matrix
-        aiVector3D Translation;
-        CalcInterpolatedPosition(Translation, AnimationTime, pNodeAnim);
-        Matrix4f TranslationM;
-//        TranslationM.InitIdentity();
-        TranslationM.InitTranslationTransform(Translation.x, Translation.y, Translation.z);
+        glm::vec3 translation = CalcInterpolatedPosition(t, pNodeAnim);
+        glm::mat4 translationM = glm::translate(glm::mat4(1.0f), translation);
 
         // Combine the above transformations
-        NodeTransformation = TranslationM * RotationM * ScalingM;
+        nodeTransformation = translationM * rotationM * scalingM;
     }
 
-    Matrix4f GlobalTransformation = ParentTransform * NodeTransformation;
+    glm::mat4 globalTransformation = parentTransform * nodeTransformation;
 
     if (_boneMapping.find(NodeName) != _boneMapping.end()) {
-        unsigned int BoneIndex = _boneMapping[NodeName];
-        _boneInfos[BoneIndex].FinalTransformation = m_GlobalInverseTransform * GlobalTransformation *
-                                                    _boneInfos[BoneIndex].BoneOffset;
+        unsigned int boneIndex = _boneMapping[NodeName];
+        _boneInfos[boneIndex].FinalTransformation = m_GlobalInverseTransform * globalTransformation *
+                                                    _boneInfos[boneIndex].BoneOffset;
     }
 
     for (unsigned int i = 0 ; i < pNode->mNumChildren ; i++) {
-        ReadNodeHeirarchy(AnimationTime, pNode->mChildren[i], GlobalTransformation);
+        ReadNodeHierarchy(t, pNode->mChildren[i], globalTransformation);
     }
 }
 
-void ExternalModel::CalcInterpolatedRotation(aiQuaternion& Out, float AnimationTime, const aiNodeAnim* pNodeAnim)
-{
-    // we need at least two values to interpolate...
-    if (pNodeAnim->mNumRotationKeys == 1) {
-        Out = pNodeAnim->mRotationKeys[0].mValue;
-        return;
-    }
-
-    unsigned int RotationIndex = FindRotation(AnimationTime, pNodeAnim);
-    unsigned int NextRotationIndex = (RotationIndex + 1);
-    assert(NextRotationIndex < pNodeAnim->mNumRotationKeys);
-    float DeltaTime = pNodeAnim->mRotationKeys[NextRotationIndex].mTime - pNodeAnim->mRotationKeys[RotationIndex].mTime;
-    float Factor = (AnimationTime - (float)pNodeAnim->mRotationKeys[RotationIndex].mTime) / DeltaTime;
-    assert(Factor >= 0.0f && Factor <= 1.0f);
-    const aiQuaternion& StartRotationQ = pNodeAnim->mRotationKeys[RotationIndex].mValue;
-    const aiQuaternion& EndRotationQ = pNodeAnim->mRotationKeys[NextRotationIndex].mValue;
-    aiQuaternion::Interpolate(Out, StartRotationQ, EndRotationQ, Factor);
-    Out = Out.Normalize();
-}
-
-unsigned int ExternalModel::FindRotation(float AnimationTime, const aiNodeAnim* pNodeAnim)
+unsigned int ExternalModel::FindRotation(float t, const aiNodeAnim* pNodeAnim)
 {
     assert(pNodeAnim->mNumRotationKeys > 0);
 
     for (unsigned int i = 0 ; i < pNodeAnim->mNumRotationKeys - 1 ; i++) {
-        if (AnimationTime < (float)pNodeAnim->mRotationKeys[i + 1].mTime) {
+        if (t < (float)pNodeAnim->mRotationKeys[i + 1].mTime) {
             return i;
         }
     }
@@ -374,42 +353,56 @@ const aiNodeAnim* ExternalModel::FindNodeAnim(const aiAnimation* pAnimation, con
     return nullptr;
 }
 
-void ExternalModel::CalcInterpolatedScaling(aiVector3D& Out, float AnimationTime, const aiNodeAnim* pNodeAnim)
+glm::quat ExternalModel::CalcInterpolatedRotation(float t, const aiNodeAnim* pNodeAnim)
 {
-    if (pNodeAnim->mNumScalingKeys == 1) {
-        Out = pNodeAnim->mScalingKeys[0].mValue;
-        return;
+    // we need at least two values to interpolate...
+    if (pNodeAnim->mNumRotationKeys == 1) {
+        return ToGlm(pNodeAnim->mRotationKeys[0].mValue);
     }
 
-    unsigned int ScalingIndex = FindScaling(AnimationTime, pNodeAnim);
-    unsigned int NextScalingIndex = (ScalingIndex + 1);
-    assert(NextScalingIndex < pNodeAnim->mNumScalingKeys);
-    float DeltaTime = (float)(pNodeAnim->mScalingKeys[NextScalingIndex].mTime - pNodeAnim->mScalingKeys[ScalingIndex].mTime);
-    float Factor = (AnimationTime - (float)pNodeAnim->mScalingKeys[ScalingIndex].mTime) / DeltaTime;
-    assert(Factor >= 0.0f && Factor <= 1.0f);
-    const aiVector3D& Start = pNodeAnim->mScalingKeys[ScalingIndex].mValue;
-    const aiVector3D& End   = pNodeAnim->mScalingKeys[NextScalingIndex].mValue;
-    aiVector3D Delta = End - Start;
-    Out = Start + Factor * Delta;
+    unsigned int rotationIndex = FindRotation(t, pNodeAnim);
+    unsigned int nextRotationIndex = (rotationIndex + 1);
+    assert(nextRotationIndex < pNodeAnim->mNumRotationKeys);
+    auto deltaTime = pNodeAnim->mRotationKeys[nextRotationIndex].mTime - pNodeAnim->mRotationKeys[rotationIndex].mTime;
+    auto factor = (t - (pNodeAnim->mRotationKeys[rotationIndex].mTime)) / deltaTime;
+    assert(factor >= 0.0 && factor <= 1.0);
+    glm::quat start = ToGlm(pNodeAnim->mRotationKeys[rotationIndex].mValue);
+    glm::quat end   = ToGlm(pNodeAnim->mRotationKeys[nextRotationIndex].mValue);
+    return glm::normalize(glm::slerp(start, end, static_cast<float>(factor)));
 }
 
-void ExternalModel::CalcInterpolatedPosition(aiVector3D& Out, float AnimationTime, const aiNodeAnim* pNodeAnim)
+glm::vec3 ExternalModel::CalcInterpolatedScaling(float t, const aiNodeAnim* pNodeAnim)
 {
-    if (pNodeAnim->mNumPositionKeys == 1) {
-        Out = pNodeAnim->mPositionKeys[0].mValue;
-        return;
+    if (pNodeAnim->mNumScalingKeys == 1) {
+        return ToGlm(pNodeAnim->mScalingKeys[0].mValue);
     }
 
-    unsigned int PositionIndex = FindPosition(AnimationTime, pNodeAnim);
-    unsigned int NextPositionIndex = (PositionIndex + 1);
-    assert(NextPositionIndex < pNodeAnim->mNumPositionKeys);
-    float DeltaTime = (float)(pNodeAnim->mPositionKeys[NextPositionIndex].mTime - pNodeAnim->mPositionKeys[PositionIndex].mTime);
-    float Factor = (AnimationTime - (float)pNodeAnim->mPositionKeys[PositionIndex].mTime) / DeltaTime;
-    assert(Factor >= 0.0f && Factor <= 1.0f);
-    const aiVector3D& Start = pNodeAnim->mPositionKeys[PositionIndex].mValue;
-    const aiVector3D& End = pNodeAnim->mPositionKeys[NextPositionIndex].mValue;
-    aiVector3D Delta = End - Start;
-    Out = Start + Factor * Delta;
+    unsigned int scalingIndex = FindScaling(t, pNodeAnim);
+    unsigned int nextScalingIndex = (scalingIndex + 1);
+    assert(nextScalingIndex < pNodeAnim->mNumScalingKeys);
+    auto deltaTime = (pNodeAnim->mScalingKeys[nextScalingIndex].mTime - pNodeAnim->mScalingKeys[scalingIndex].mTime);
+    auto factor = (t - pNodeAnim->mScalingKeys[scalingIndex].mTime) / deltaTime;
+    assert(factor >= 0.0f && factor <= 1.0f);
+    glm::vec3 start = ToGlm(pNodeAnim->mScalingKeys[scalingIndex].mValue);
+    glm::vec3 end   = ToGlm(pNodeAnim->mScalingKeys[nextScalingIndex].mValue);
+    return glm::mix(start, end, factor);
+}
+
+glm::vec3 ExternalModel::CalcInterpolatedPosition(float t, const aiNodeAnim* pNodeAnim)
+{
+    if (pNodeAnim->mNumPositionKeys == 1) {
+        return ToGlm(pNodeAnim->mPositionKeys[0].mValue);
+    }
+
+    unsigned int positionIndex = FindPosition(t, pNodeAnim);
+    unsigned int nextPositionIndex = (positionIndex + 1);
+    assert(nextPositionIndex < pNodeAnim->mNumPositionKeys);
+    auto deltaTime = pNodeAnim->mPositionKeys[nextPositionIndex].mTime - pNodeAnim->mPositionKeys[positionIndex].mTime;
+    auto factor = (t - pNodeAnim->mPositionKeys[positionIndex].mTime) / deltaTime;
+    assert(factor >= 0.0f && factor <= 1.0f);
+    glm::vec3 start = ToGlm(pNodeAnim->mPositionKeys[positionIndex].mValue);
+    glm::vec3 end   = ToGlm(pNodeAnim->mPositionKeys[nextPositionIndex].mValue);
+    return glm::mix(start, end, factor);
 }
 
 unsigned int ExternalModel::FindScaling(float AnimationTime, const aiNodeAnim* pNodeAnim)

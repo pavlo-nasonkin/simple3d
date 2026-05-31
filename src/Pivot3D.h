@@ -62,5 +62,5 @@ public:
     void SetName(const std::string &name);
 
 protected:
-	glm::mat4 LocalMatrix() const;
+	virtual glm::mat4 LocalMatrix() const;
 };

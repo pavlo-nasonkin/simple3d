@@ -2,7 +2,6 @@
 #include "materials/MaterialBase.h"
 #include "Pivot3D.h"
 #include "GLUtils.h"
-#include "utils/Math3d.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "render/VertexLayout.h"
@@ -59,9 +58,16 @@ void Mesh::SetupMesh(const VertexLayout& vertexLayout, std::span<const std::byte
 void Mesh::AddSecondaryBuffer(const VertexLayout &layout, std::span<const std::byte> data)
 {
     _vao.Bind();
-    SecondaryBuffer buffer {{}, layout};
     auto& secondary = _secondaryVbos.emplace_back(GLBuffer{}, layout);
     secondary.buffer.SetData(GL_ARRAY_BUFFER, data.size_bytes(), data.data(), GL_STATIC_DRAW);
     layout.Apply();
     GLVertexArray::Unbind();
+}
+
+glm::mat4 Mesh::LocalMatrix() const
+{
+    // Source-scene transform (e.g. COLLADA Z_UP -> Y_UP baked at the root node by Assimp,
+    // plus any intermediate aiNode transforms) is applied on top of the user-controllable
+    // PRS transform from Pivot3D.
+    return _nodeMatrix * Pivot3D::LocalMatrix();
 }

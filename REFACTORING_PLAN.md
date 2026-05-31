@@ -165,12 +165,12 @@
 
 - [x] **5.4. `Mesh` владеет своими ресурсами, а не «голыми» `GLuint`.** Завести `class GLBuffer` / `class GLVertexArray` RAII-обёртки (или `std::unique_ptr` с кастомным deleter’ом).
 
-- [ ] **5.5. Унифицировать математику на GLM.** Удалить `Vector3f`/`Vector4f`/`Matrix4f`/`Quaternion` из `Math3d.h`, перевести скиннинг на `glm::mat4`/`glm::quat`. Помощник для конвертации `aiMatrix4x4 → glm::mat4`.
+- [x] **5.5. Унифицировать математику на GLM.** Удалить `Vector3f`/`Vector4f`/`Matrix4f`/`Quaternion` из `Math3d.h`, перевести скиннинг на `glm::mat4`/`glm::quat`. Помощник для конвертации `aiMatrix4x4 → glm::mat4`.
   - Файлы: `src/utils/Math3d.*`, `src/ExternalModel.cpp`, `src/materials/SkinnedMaterial3D.cpp`.
 
 - [ ] **5.6. Унифицировать именование.** Договориться: приватные поля — `_camelCase`, методы — `camelCase`, классы — `PascalCase`, константы — `kUpperCamel` или `UPPER_SNAKE`. Камеру (Position/Yaw/Pitch) привести к проектному стилю.
 
-- [ ] **5.7. Перенести GLFW-адаптеры.** `GLFWKeyboardInput.*` и `GLFWMouseInput.*` из корня проекта в `src/platform/glfw/`.
+- [x] **5.7. Перенести GLFW-адаптеры.** `GLFWKeyboardInput.*` и `GLFWMouseInput.*` из корня проекта в `src/platform/glfw/`.
 
 - [x] **5.8. `Pivot3D::translate`/`scale` пустые.** Либо реализовать (накопительный сдвиг/масштаб), либо удалить.
 

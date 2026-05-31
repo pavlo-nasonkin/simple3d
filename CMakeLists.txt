@@ -67,8 +67,6 @@ set(SOURCE_FILES
         src/utils/FileUtils.cpp
         src/utils/FileUtils.h
         src/utils/Math.h
-        src/utils/Math3d.cpp
-        src/utils/Math3d.h
         src/utils/StringUtils.h
         src/utils/StringUtils.cpp
         src/models/BoxModel.cpp

@@ -1,22 +1,17 @@
 #pragma once
 
-
 // GL Includes
-#include <GL/glew.h> // Contains all the necessery OpenGL includes
+#include <GL/glew.h>
 #include <glm/glm.hpp>
 //Assimp
 #include <assimp/scene.h>
 
-#include "../Shader.h"
 #include "Mesh.h"
-#include <SOIL/SOIL2.h>
-#include "../resources/Texture2D.h"
-#include "../Pivot3D.h"
-#include "../materials/MaterialBase.h"
+#include "resources/Texture2D.h"
+#include "Pivot3D.h"
+#include "materials/MaterialBase.h"
 #include <memory>
 #include <map>
-#include "../utils/Math3d.h"
-#include "../materials/SkinnedMaterial3D.h"
 #include <assimp/Importer.hpp>
 
 namespace VertexTypes {
@@ -25,48 +20,48 @@ namespace VertexTypes {
 
 struct BoneInfo
 {
-    Matrix4f BoneOffset;
-    Matrix4f FinalTransformation;
+    glm::mat4 BoneOffset = glm::mat4(1.0f);
+    glm::mat4 FinalTransformation = glm::mat4(1.0f);
 };
 
 class ExternalModel: public Pivot3D
 {
 public:
-	/*  Functions   */
-    ExternalModel(const std::string& path);
+    explicit ExternalModel(const std::string& path);
     void Render(const RenderContext &ctx, MaterialBase* material) override;
-	~ExternalModel() override;
+	~ExternalModel() override = default;
     void Init() override;
 
 private:
+
+	void LoadModel(const std::string& path);
+	void ProcessNode(aiNode* node, const aiScene* scene, const aiMatrix4x4& parentTransform);
+	std::shared_ptr<Mesh> ProcessMesh(aiMesh* mesh, const aiScene* scene);
+	std::vector<std::shared_ptr<Texture2D>> LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& typeName);
+	void BoneTransform(float timeSec, const std::shared_ptr<std::vector<glm::mat4>>& transforms);
+	void ReadNodeHierarchy(float t, const aiNode* pNode, const glm::mat4& parentTransform);
+
+	unsigned int FindRotation(float t, const aiNodeAnim* pNodeAnim);
+	void LoadBones(unsigned int meshIndex, const aiMesh* pMesh, std::vector<VertexTypes::VertexBoneData>& bones);
+	const aiNodeAnim* FindNodeAnim(const aiAnimation* pAnimation, const std::string& nodeName);
+	unsigned int FindScaling(float t, const aiNodeAnim* pNodeAnim);
+	unsigned int FindPosition(float t, const aiNodeAnim* pNodeAnim);
+
+	glm::quat CalcInterpolatedRotation(float t, const aiNodeAnim* pNodeAnim);
+	glm::vec3 CalcInterpolatedScaling(float t, const aiNodeAnim* pNodeAnim);
+	glm::vec3 CalcInterpolatedPosition(float t, const aiNodeAnim* pNodeAnim);
+
+	void AddBoneData(VertexTypes::VertexBoneData& data, unsigned int boneID, float weight);
+
 	/*  Model Data  */
     const aiScene* _scene;
     std::string _directory;
     std::string _path;
-    Matrix4f m_GlobalInverseTransform;
-    std::shared_ptr<std::vector<Matrix4f>> _transforms;
+    glm::mat4 m_GlobalInverseTransform;
+    std::shared_ptr<std::vector<glm::mat4>> _transforms;
     unsigned int _numBones = 0;
-    std::map<std::string, int> _boneMapping;
+    std::map<std::string, unsigned int> _boneMapping;
     std::vector<BoneInfo> _boneInfos;
-	/*  Functions   */
-    void LoadModel(const std::string& path);
-	void ProcessNode(aiNode* node, const aiScene* scene);
-    std::shared_ptr<Mesh> ProcessMesh(aiMesh* mesh, const aiScene* scene);
-    std::vector<std::shared_ptr<Texture2D>> LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& typeName);
-    //skinned mesh
 
-    Assimp::Importer import;
-
-
-    void BoneTransform(float TimeInSeconds, std::shared_ptr<std::vector<Matrix4f>> transforms);
-    void ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, const Matrix4f& ParentTransform);
-    void CalcInterpolatedRotation(aiQuaternion& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
-    unsigned int FindRotation(float AnimationTime, const aiNodeAnim* pNodeAnim);
-    void LoadBones(unsigned int MeshIndex, const aiMesh* pMesh, std::vector<VertexTypes::VertexBoneData>& bones);
-    const aiNodeAnim* FindNodeAnim(const aiAnimation* pAnimation, const std::string& nodeName);
-    void CalcInterpolatedScaling(aiVector3D& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
-    void CalcInterpolatedPosition(aiVector3D& Out, float AnimationTime, const aiNodeAnim* pNodeAnim);
-    unsigned int FindScaling(float AnimationTime, const aiNodeAnim* pNodeAnim);
-    unsigned int FindPosition(float AnimationTime, const aiNodeAnim* pNodeAnim);
-    void AddBoneData(VertexTypes::VertexBoneData& data, unsigned int boneID, float weight);
+    Assimp::Importer _import;
 };

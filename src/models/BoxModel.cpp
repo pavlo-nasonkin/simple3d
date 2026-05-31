@@ -20,8 +20,8 @@ void BoxModel::Init()
 
 std::shared_ptr<Mesh> BoxModel::ProcessMesh()
 {
-	auto mat = std::make_shared<Material3D>("../assets/shaders/shader.vs",
-														  "../assets/shaders/defaultColorLight.fs");
+	auto mat = std::make_shared<Material3D>("../assets/shaders/shader.vsh",
+														  "../assets/shaders/defaultColorLight.fsh");
 	// mat->SetLightingModel(std::make_unique<UnlitLightingModel>());
 	_colorFilter = std::make_shared<ColorFilter>();
 	_colorFilter->SetColor(_color);

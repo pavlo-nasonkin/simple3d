@@ -33,13 +33,19 @@ GLuint TextureManager::TextureFromFile(std::string_view filename, std::string_vi
 	fullname.append(directory).push_back('/');
 	fullname.append(filename);
 
+	// SOIL_FLAG_TEXTURE_REPEATS -> GL_REPEAT wrapping. Without it SOIL defaults to
+	// GL_CLAMP_TO_EDGE, which breaks mirrored/tiled UV layouts (e.g. nanosuit): the
+	// mirrored half of the mesh has UVs outside [0,1] and gets clamped to the texture
+	// border instead of wrapping, producing a smeared/garbage half.
+	// NTSC_SAFE_RGB and COMPRESS_TO_DXT are intentionally dropped: the former remaps
+	// colors and the latter adds lossy block artifacts, both degrade texture quality.
 	GLuint textureID = SOIL_load_OGL_texture
 	(
 		fullname.c_str(),
 		SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-	);;
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_TEXTURE_REPEATS
+	);
 
 	std::stringstream ss;
 	ss << "[TextureManager::TextureFromFile] " 	  << "Loaded texture from file: " << fullname

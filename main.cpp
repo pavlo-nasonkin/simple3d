@@ -69,15 +69,24 @@ int main() {
 		box2->SetScale(0.5f, 0.5f, 0.5f);
 
 		auto backpack = std::make_shared<ExternalModel>("../assets/models/backpack/backpack.obj");
+		backpack->SetPosition(3.0f, 0.0f, 0.0f);
 		backpack->Init();
-		backpack->SetScale(1.0f, 1.0f, 1.0f);
 		scene3D->AddChild(backpack);
 
-		// auto nanosuit = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
-		// nanosuit->Init();
-		// nanosuit->SetScale(.1f, 0.1f, 0.1f);
-		// nanosuit->SetPosition(3.0f, 0.0f, 0.0f);
-		// scene3D->AddChild(nanosuit);
+		auto shira = std::make_shared<ExternalModel>("../assets/models/shira/Shira_animation.DAE");
+		shira->Init();
+		scene3D->AddChild(shira);
+
+		// auto military_box = std::make_shared<ExternalModel>("../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High.fbx");
+		// military_box->Init();
+		// military_box->SetScale(0.2f, 0.2f, 0.2f);
+		// scene3D->AddChild(military_box);
+
+		auto nanosuit = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
+		nanosuit->Init();
+		nanosuit->SetScale(.1f, 0.1f, 0.1f);
+		nanosuit->SetPosition(-3.0f, 0.0f, 0.0f);
+		scene3D->AddChild(nanosuit);
 
 
 
