@@ -10,9 +10,9 @@
 #include "materials/ObjectIdMaterial.h"
 
 Scene3D::Scene3D() :
-    _lightPosition({ 6.2f, 6.0f, 6.0 }),
-    _lightAmbient({ 0.2f, 0.2f, 0.2f }),
-    _lightDiffuse({ 0.5f, 0.5f, 0.5f }),
+    _lightPosition({ 5.2f, 5.0f, 5.0 }),
+    _lightAmbient({ 0.03f, 0.03f, 0.03f }),
+    _lightDiffuse({ 1.0f, 0.96f, 0.90f }),
     _lightSpecular({ 1.0f, 1.0f, 1.0f })
 {
 
@@ -51,7 +51,7 @@ void Scene3D::postRender()
 
 void Scene3D::prepareRender()
 {
-	glClearColor(0.1f, 0.2f, 0.2f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 

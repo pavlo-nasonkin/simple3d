@@ -1,6 +1,11 @@
 #include "TextureManager.h"
+
+#include <filesystem>
+#include <iostream>
+
 #include "Texture2D.h"
 #include "Engine.h"
+#include "GLUtils.h"
 
 TextureManager::TextureManager()
 {
@@ -19,7 +24,7 @@ std::shared_ptr<Texture2D> TextureManager::getTexture(std::string_view texturePa
 
     std::shared_ptr<Texture2D> texture = std::make_shared<Texture2D>();
 
-    texture->id = TextureManager::TextureFromFile(texturePath, directory);
+    texture->id = TextureFromFile(texturePath, directory);
 	texture->type = typeName;
 	texture->path = texturePath;
 	auto [inserted, _] = _textures.emplace(std::string(texturePath), std::move(texture));
@@ -42,15 +47,17 @@ GLuint TextureManager::TextureFromFile(std::string_view filename, std::string_vi
 	GLuint textureID = SOIL_load_OGL_texture
 	(
 		fullname.c_str(),
-		SOIL_LOAD_AUTO,
+		SOIL_LOAD_RGB,
 		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_TEXTURE_REPEATS
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS
 	);
 
 	std::stringstream ss;
 	ss << "[TextureManager::TextureFromFile] " 	  << "Loaded texture from file: " << fullname
 			<< " with result: " << SOIL_last_result();
 	Engine::GetInstance().Log(ss.str());
+
+	glCheckError();
 
 
 	// SOIL 1.0 loading

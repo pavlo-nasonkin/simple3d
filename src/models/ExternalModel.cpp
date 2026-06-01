@@ -16,6 +16,13 @@
 #include "materials/filters/NormalMapFilter.h"
 #include "render/VertexLayoutPresets.h"
 #include "utils/AssimpGlm.h"
+#include "materials/filters/Filter3d.h"
+
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
+
+#include "lighting/PBRLightingModel.h"
 
 namespace {
     std::string NormalizeTexturePath(const std::string& raw) {
@@ -25,6 +32,57 @@ namespace {
             p.erase(0, 2);
         }
         return p;
+    }
+
+    std::string ToLower(std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return s;
+    }
+
+    // Declarative description of how each logical material slot is sourced.
+    //   assimpTypes        — assimp texture types tried in order (primary first, then legacy fallbacks).
+    //   conventionSuffixes — file-name suffixes (case-insensitive, after the last '_') used when assimp
+    //                        yields nothing; resolved in priority order, first match wins.
+    struct SlotConfig {
+        Filter3D::FilterSlot slot;
+        std::string typeName;
+        Filter3D::BlendMode blend;
+        bool normalMap;
+        std::vector<aiTextureType> assimpTypes;
+        std::vector<std::string> conventionSuffixes;
+    };
+
+    const std::vector<SlotConfig> kSlotConfigs = {
+        { Filter3D::FilterSlot::BaseColor, "texture_diffuse",   Filter3D::BlendMode::MULTIPLY, false,
+          { aiTextureType_BASE_COLOR, aiTextureType_DIFFUSE },
+          { "BaseColor", "Albedo", "Diffuse" } },
+
+        { Filter3D::FilterSlot::Specular,  "texture_specular",  Filter3D::BlendMode::MULTIPLY, false,
+          { aiTextureType_SPECULAR },
+          { "Specular" } },
+
+        { Filter3D::FilterSlot::Normal,    "texture_normal",    Filter3D::BlendMode::NORMAL,   true,
+          { aiTextureType_NORMALS, aiTextureType_HEIGHT },
+          { "Normal", "NormalGL", "NormalDX" } },
+
+        { Filter3D::FilterSlot::Metallic,  "texture_metalness", Filter3D::BlendMode::NORMAL,   false,
+          { aiTextureType_METALNESS },
+          { "Metalness", "Metallic" } },
+
+        { Filter3D::FilterSlot::Roughness, "texture_roughness", Filter3D::BlendMode::NORMAL,   false,
+          { aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS },
+          { "Roughness" } },
+
+        { Filter3D::FilterSlot::AO,        "texture_ao",        Filter3D::BlendMode::NORMAL,   false,
+          { aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP },
+          { "AO", "AmbientOcclusion", "Occlusion" } },
+    };
+
+    bool IsImageExtension(const std::string& ext) {
+        const std::string e = ToLower(ext);
+        return e == ".jpg" || e == ".jpeg" || e == ".png" ||
+               e == ".tga" || e == ".bmp"  || e == ".psd";
     }
 }
 
@@ -50,7 +108,11 @@ void ExternalModel::Init()
 
 void ExternalModel::LoadModel(const std::string& path)
 {
-    _scene = _import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    unsigned int flags = aiProcess_Triangulate | aiProcess_CalcTangentSpace;
+    if (_flipUVs) {
+        flags |= aiProcess_FlipUVs;
+    }
+    _scene = _import.ReadFile(path, flags);
 
     if (!_scene || _scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !_scene->mRootNode)
 	{
@@ -144,6 +206,7 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
     }
     else {
         mat = std::make_shared<Material3D>("../assets/shaders/shader.vsh", "../assets/shaders/defaultColorLight.fsh");
+        mat->SetLightingModel(std::make_unique<PBRLightingModel>());
     }
 
 
@@ -155,33 +218,33 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
     if (scene->mNumMaterials > 0)
 	{
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        static const std::string kTextureDiffuse = "texture_diffuse";
-        auto diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, kTextureDiffuse);
 
-        for (const auto& tex : diffuseMaps)
+        aiString aiMatName;
+        material->Get(AI_MATKEY_NAME, aiMatName);
+        const std::string materialName = aiMatName.C_Str();
+
+        for (const auto& cfg : kSlotConfigs)
         {
-            auto textureFilter = std::make_shared<TextureMapFilter>(tex);
-            textureFilter->SetSlot(Filter3D::FilterSlot::BaseColor);
-            textureFilter->SetBlendMode(Filter3D::BlendMode::MULTIPLY);
-            mat->AddFilter(textureFilter);
-        }
+            // 1. Try assimp's material texture slots (primary type + legacy fallbacks).
+            auto maps = LoadMaterialTextures(material, cfg.assimpTypes, cfg.typeName);
+            // 2. Fallback for Megascans/Quixel-style assets whose FBX materials embed no
+            //    texture paths: resolve sibling files by their naming convention, scoped to
+            //    this material's name so multi-part assets don't pull in every part's maps.
+            if (maps.empty()) {
+                maps = ResolveTexturesByConvention(cfg.conventionSuffixes, cfg.typeName, materialName);
+            }
 
-        static const std::string kTextureSpecular = "texture_specular";
-        auto specularMaps = this->LoadMaterialTextures(material, aiTextureType_SPECULAR, kTextureSpecular);
-        for (const auto& tex : specularMaps) {
-            auto specFilter = std::make_shared<TextureMapFilter>(tex);
-            specFilter->SetSlot(Filter3D::FilterSlot::Specular);
-            specFilter->SetBlendMode(Filter3D::BlendMode::MULTIPLY);
-            mat->AddFilter(specFilter);
-        }
-
-        static const std::string kTextureNormal = "texture_normal";
-        auto normalMaps = this->LoadMaterialTextures(material, aiTextureType_NORMALS, kTextureNormal);
-        for (const auto& tex : normalMaps) {
-            auto normalFilter = std::make_shared<NormalMapFilter>(tex);
-            normalFilter->SetSlot(Filter3D::FilterSlot::Normal);
-            normalFilter->SetBlendMode(Filter3D::BlendMode::NORMAL);
-            mat->AddFilter(normalFilter);
+            // Every slot here is single-valued (the shader assigns, it does not accumulate):
+            // a second texture would just overwrite the first, so only the first map is used.
+            if (!maps.empty()) {
+                const auto& tex = maps.front();
+                std::shared_ptr<Filter3D> filter = cfg.normalMap
+                    ? std::static_pointer_cast<Filter3D>(std::make_shared<NormalMapFilter>(tex))
+                    : std::static_pointer_cast<Filter3D>(std::make_shared<TextureMapFilter>(tex));
+                filter->SetSlot(cfg.slot);
+                filter->SetBlendMode(cfg.blend);
+                mat->AddFilter(filter);
+            }
         }
 	}
 
@@ -215,11 +278,81 @@ std::vector<std::shared_ptr<Texture2D>> ExternalModel::LoadMaterialTextures(aiMa
 		mat->GetTexture(type, i, &texturePath);
 		const std::string normalized = NormalizeTexturePath(texturePath.C_Str());
         auto texture = Engine::GetInstance().GetTextureManager()->getTexture(normalized, typeName, _directory);
-		if (texture != nullptr) {
+		// id == 0 means SOIL failed to load the file (e.g. FBX referencing a non-existent
+		// `<model>.fbm/...` embedded-media path). Treat it as "no texture" so the caller's
+		// convention-based fallback can resolve the real sibling file instead.
+		if (texture != nullptr && texture->id != 0) {
 			textures.push_back(texture);
 		}
 	}
 	return textures;
+}
+
+std::vector<std::shared_ptr<Texture2D>> ExternalModel::LoadMaterialTextures(aiMaterial* mat, const std::vector<aiTextureType>& types, const std::string& typeName)
+{
+    for (const auto type : types) {
+        auto textures = LoadMaterialTextures(mat, type, typeName);
+        if (!textures.empty()) {
+            return textures;
+        }
+    }
+    return {};
+}
+
+std::vector<std::shared_ptr<Texture2D>> ExternalModel::ResolveTexturesByConvention(const std::vector<std::string>& suffixes, const std::string& typeName, const std::string& materialName)
+{
+    std::vector<std::shared_ptr<Texture2D>> textures;
+
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    if (_directory.empty() || !fs::is_directory(_directory, ec)) {
+        return textures;
+    }
+
+    const std::string matLower = ToLower(materialName);
+
+    // Priority order over suffixes: the first suffix that yields a match wins
+    // (so a BaseColor map beats a Diffuse map when both exist).
+    for (const auto& suffix : suffixes) {
+        const std::string token = "_" + ToLower(suffix);
+
+        // Within a suffix, prefer a file scoped to this material (`<materialName>_<suffix>`)
+        // over a loose `*_<suffix>` match. On multi-part assets this picks the right part's
+        // map instead of dumping every part's map into one material.
+        fs::path scopedMatch;
+        fs::path looseMatch;
+
+        for (const auto& entry : fs::directory_iterator(_directory, ec)) {
+            if (ec) break;
+            if (!entry.is_regular_file(ec)) continue;
+
+            const auto& path = entry.path();
+            if (!IsImageExtension(path.extension().string())) continue;
+
+            const std::string stem = ToLower(path.stem().string());
+            if (stem.size() < token.size()) continue;
+            if (stem.compare(stem.size() - token.size(), token.size(), token) != 0) continue;
+
+            if (!matLower.empty() && stem.rfind(matLower, 0) == 0) {
+                scopedMatch = path;
+                break; // exact owner found, no need to look further
+            }
+            if (looseMatch.empty()) {
+                looseMatch = path;
+            }
+        }
+
+        const fs::path& chosen = !scopedMatch.empty() ? scopedMatch : looseMatch;
+        if (!chosen.empty()) {
+            const std::string filename = chosen.filename().string();
+            auto texture = Engine::GetInstance().GetTextureManager()->getTexture(filename, typeName, _directory);
+            if (texture != nullptr) {
+                textures.push_back(texture);
+            }
+            break;
+        }
+    }
+    return textures;
 }
 
 void ExternalModel::AddBoneData(VertexTypes::VertexBoneData& data, unsigned int boneID, float weight)

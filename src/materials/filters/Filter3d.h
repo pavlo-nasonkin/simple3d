@@ -27,12 +27,17 @@ public:
         Normal,       // переопределяет N (для normal map)
         Emissive,     // добавляется через EMISSIVE
         Overlay,      // постпроцесс над финальным color
+
+        Metallic,
+        Roughness,
+        AO
     };
 
     enum ResultType
     {
         VEC3,
-        VEC4
+        VEC4,
+        FLOAT
     };
 
     Filter3D() = default;
@@ -63,7 +68,7 @@ public:
     void SetNextUniformId(unsigned int unit) { _nextUniformId = unit; }
 
     ResultType GetResultType() const { return _resultType; }
-
+    void SetResultType(ResultType type) { _resultType = type; }
 protected:
 
     virtual const std::string& GetBaseFilterCode() const = 0;

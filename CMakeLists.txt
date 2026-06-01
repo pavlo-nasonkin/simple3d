@@ -25,6 +25,8 @@ set(SOURCE_FILES
         src/input/MouseInput.cpp
         src/input/MouseInput.h
         src/lighting/ILightingModel.h
+        src/lighting/PBRLightingModel.cpp
+        src/lighting/PBRLightingModel.h
         src/lighting/PhongLightingModel.cpp
         src/lighting/PhongLightingModel.h
         src/lighting/UnlitLightingModel.cpp

@@ -21,9 +21,17 @@ void main()
     vec3 N             = normalize(Normal);
     vec3 EMISSIVE      = vec3(0.0);
 
+    float M  = 0.0;
+    float R  = 0.5;
+    float AO = 1.0;
+
     // __APPLY_BASE_COLOR_FILTERS__
     // __APPLY_SPECULAR_FILTERS__
     // __APPLY_NORMAL_FILTERS__
+
+    // __APPLY_METALLIC_FILTERS__
+    // __APPLY_ROUGHNESS_FILTERS__
+    // __APPLY_AO_FILTERS__
 
     // __APPLY_LIGHTING__
 

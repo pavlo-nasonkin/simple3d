@@ -75,6 +75,9 @@ void Material3D::InjectFilters(std::string &fragmentShaderSource) const {
 		{ Filter3D::FilterSlot::Normal,    "// __APPLY_NORMAL_FILTERS__"    },
 		{ Filter3D::FilterSlot::Emissive,  "// __APPLY_EMISSIVE_FILTERS__"  },
 		{ Filter3D::FilterSlot::Overlay,   "// __APPLY_OVERLAY_FILTERS__"   },
+		{ Filter3D::FilterSlot::Metallic,  "// __APPLY_METALLIC_FILTERS__"   },
+		{ Filter3D::FilterSlot::Roughness, "// __APPLY_ROUGHNESS_FILTERS__"   },
+		{ Filter3D::FilterSlot::AO,		  "// __APPLY_AO_FILTERS__"   },
 	};
 	static const std::unordered_map<Filter3D::FilterSlot, std::string> kSlotTarget = {
 		{ Filter3D::FilterSlot::BaseColor, "BASE_COLOR" },
@@ -82,6 +85,9 @@ void Material3D::InjectFilters(std::string &fragmentShaderSource) const {
 		{ Filter3D::FilterSlot::Normal,    "N" },
 		{ Filter3D::FilterSlot::Emissive,  "EMISSIVE" },
 		{ Filter3D::FilterSlot::Overlay,   "color" },
+		{ Filter3D::FilterSlot::Metallic,   "M" },
+		{ Filter3D::FilterSlot::Roughness,   "R" },
+		{ Filter3D::FilterSlot::AO,   "AO" },
 	};
 
 	for (const auto& filter : _filters)
@@ -104,10 +110,12 @@ void Material3D::InjectFilters(std::string &fragmentShaderSource) const {
 				|| filter->GetSlot() == Filter3D::FilterSlot::Normal
 				|| filter->GetSlot() == Filter3D::FilterSlot::Emissive);
 
-		const bool returnsVec4  = (filter->GetResultType() == Filter3D::ResultType::VEC4);
 		std::string rhs = filter->GetGeneratedUniqueName() + "()";
-		if (targetIsVec3 && returnsVec4) {
+		if (targetIsVec3 && filter->GetResultType() == Filter3D::ResultType::VEC4) {
 			rhs += ".rgb";
+		}
+		else if (filter->GetSlot() == Filter3D::FilterSlot::Metallic || filter->GetSlot() == Filter3D::FilterSlot::Roughness || filter->GetSlot() == Filter3D::FilterSlot::AO) {
+			rhs += ".r";
 		}
 
 		std::string injection = target + blend + rhs + ";\n    " + marker;

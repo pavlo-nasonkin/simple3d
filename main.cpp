@@ -57,41 +57,49 @@ int main() {
 		glCullFace(GL_BACK);
 
 
-		auto box = std::make_shared<BoxModel>();
+		// auto box = std::make_shared<BoxModel>();
+		//
+		// box->Init();
+		// box->SetColor(0xff0000ff);
+		// auto box2 = std::make_shared<BoxModel>();
+		// box2->SetColor(0x00ff00ff);
+		// box2->Init();
+		//
+		// box2->SetPosition(1.0f, 0.0f, 0.0f);
+		// box2->SetScale(0.5f, 0.5f, 0.5f);
 
-		box->Init();
-		box->SetColor(0xff0000ff);
-		auto box2 = std::make_shared<BoxModel>();
-		box2->SetColor(0x00ff00ff);
-		box2->Init();
+		// auto backpack = std::make_shared<ExternalModel>("../assets/models/backpack/backpack.obj");
+		// backpack->SetPosition(3.0f, 0.0f, 0.0f);
+		// backpack->Init();
+		// scene3D->AddChild(backpack);
 
-		box2->SetPosition(1.0f, 0.0f, 0.0f);
-		box2->SetScale(0.5f, 0.5f, 0.5f);
+		// auto shira = std::make_shared<ExternalModel>("../assets/models/shira/Shira_animation.DAE");
+		// shira->Init();
+		// scene3D->AddChild(shira);
 
-		auto backpack = std::make_shared<ExternalModel>("../assets/models/backpack/backpack.obj");
-		backpack->SetPosition(3.0f, 0.0f, 0.0f);
-		backpack->Init();
-		scene3D->AddChild(backpack);
+		auto military_box = std::make_shared<ExternalModel>("../assets/models/orion-skylark-gt/orion_skylark_gt.fbx");
+		military_box->SetFlipUVs(true);
+		military_box->Init();
+		military_box->SetScale(0.05f, 0.05f, 0.05f);
+		scene3D->AddChild(military_box);
 
-		auto shira = std::make_shared<ExternalModel>("../assets/models/shira/Shira_animation.DAE");
-		shira->Init();
-		scene3D->AddChild(shira);
+		// auto model = std::make_shared<ExternalModel>("../assets/models/bolete_mushrooms_pdvcb_high/Bolete_Mushrooms_pdvcB_High.fbx");
+		// model->SetPosition(5.0f, 0.0f, 0.0f);
+		// model->SetFlipUVs(true);
+		// model->Init();
+		// model->SetScale(0.1f, 0.1f, 0.1f);
+		// scene3D->AddChild(model);
 
-		// auto military_box = std::make_shared<ExternalModel>("../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High.fbx");
-		// military_box->Init();
-		// military_box->SetScale(0.2f, 0.2f, 0.2f);
-		// scene3D->AddChild(military_box);
-
-		auto nanosuit = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
-		nanosuit->Init();
-		nanosuit->SetScale(.1f, 0.1f, 0.1f);
-		nanosuit->SetPosition(-3.0f, 0.0f, 0.0f);
-		scene3D->AddChild(nanosuit);
+		// auto nanosuit = std::make_shared<ExternalModel>("../assets/models/nanosuit/nanosuit.obj");
+		// nanosuit->Init();
+		// nanosuit->SetScale(.2f, 0.2f, 0.2f);
+		// nanosuit->SetPosition(-3.0f, 0.0f, 0.0f);
+		// scene3D->AddChild(nanosuit);
 
 
 
 		// scene3D->AddChild(box);
-		box->AddChild(box2);
+		// box->AddChild(box2);
 
 		glfwSetWindowUserPointer(window, camera.get());
 		glfwSetFramebufferSizeCallback(window, [](GLFWwindow* w, int width, int height) {
@@ -114,8 +122,8 @@ int main() {
 			deltaTime = currentFrame - lastFrame;
 			lastFrame = currentFrame;
 
-			box->Rotate(0.0f,1 * deltaTime, 0.0f);
-			box2->Rotate(1 * deltaTime,0.0f, 0.0f);
+			// box->Rotate(0.0f,1 * deltaTime, 0.0f);
+			// box2->Rotate(1 * deltaTime,0.0f, 0.0f);
 
 
 			Engine::GetInstance().GetUpdateBroadcaster()->Update(deltaTime);
