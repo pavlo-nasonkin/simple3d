@@ -19,7 +19,9 @@
 
 #include "models/ExternalModel.h"
 #include "resources/HDRLoader.h"
-
+#include "render/IBLBaker.h"
+#include "models/PlaneModel.h"
+#include "render/ShadowMap.h"
 
 GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
 GLfloat lastFrame = 0.0f;  	// Time of last frame
@@ -41,7 +43,7 @@ int main() {
 	Engine::GetInstance().Init(window);
 
 	{
-		auto camera = std::make_shared<FreeLookCamera>();
+		auto camera = std::make_shared<FirstPersonCamera>();
 		camera->SetScreenWidth(screenWidth);
 		camera->SetScreenHeight(screenHeight);
 		camera->buildProjectionMatrix(45.0f, 0.1f, 100.0f);
@@ -49,15 +51,23 @@ int main() {
 
 		auto scene3D = std::make_shared<Scene3D>();
 		scene3D->Init();
+		scene3D->EnableShadows(4096, 20.0f);
 
 		Engine::GetInstance().SetObjectSelector(std::make_shared<ObjectSelector>(scene3D, camera));
-
+		
 		//TODO move to Material3D
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
-		auto cubemap = HDRLoader::EquirectFileToCubemap("../assets/env/sunny_rose_garden_4k.hdr");
-		scene3D->SetSkybox(cubemap);
+		auto cubemap = HDRLoader::EquirectFileToCubemap("../assets/env/citrus_orchard_road_puresky_4k.hdr");
+		if (cubemap) {
+			scene3D->SetSkybox(cubemap);
+			// Прекомпиляция IBL из окружения (один раз) и передача в сцену.
+			auto irradiance  = IBLBaker::BakeIrradiance(*cubemap);
+			auto prefiltered = IBLBaker::BakePrefiltered(*cubemap);
+			auto brdfLUT     = IBLBaker::BakeBRDFLUT();
+			scene3D->SetEnvironment(irradiance, prefiltered, brdfLUT);
+		}
 
 		// auto box = std::make_shared<BoxModel>();
 		//
@@ -79,10 +89,26 @@ int main() {
 		// shira->Init();
 		// scene3D->AddChild(shira);
 
-		auto military_box = std::make_shared<ExternalModel>("../assets/models/orion-skylark-gt/orion_skylark_gt.fbx");
+		auto ground = std::make_shared<PlaneModel>();
+		//Setup and set material
+		ground->SetMaterialDirectory("../assets/materials/worn_pavement_uddhdb1fw_4k");
+		ground->SetTiling(12.0f);
+		ground->SetRoughnessScale(0.3f);
+		ground->Init();
+		ground->SetScale(100.0f, 100.0f, 100.0f);
+		scene3D->AddChild(ground);
+
+		auto car = std::make_shared<ExternalModel>("../assets/models/orion-skylark-gt/orion_skylark_gt.fbx");
+		car->SetFlipUVs(true);
+		car->Init();
+		car->SetScale(0.05f, 0.05f, 0.05f);
+		scene3D->AddChild(car);
+
+		auto military_box = std::make_shared<ExternalModel>("../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High.fbx");
 		military_box->SetFlipUVs(true);
 		military_box->Init();
 		military_box->SetScale(0.05f, 0.05f, 0.05f);
+		military_box->SetPosition(6.0f, 0.0f, 6.0f);
 		scene3D->AddChild(military_box);
 
 		// auto model = std::make_shared<ExternalModel>("../assets/models/bolete_mushrooms_pdvcb_high/Bolete_Mushrooms_pdvcB_High.fbx");

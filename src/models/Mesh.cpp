@@ -16,6 +16,10 @@ Mesh::Mesh(const std::shared_ptr<MaterialBase>& mat) :
 // Render the mesh
 void Mesh::Render(const RenderContext &ctx, MaterialBase* material)
 {
+    if (ctx.shadowPass && !_castShadows) {
+        return;
+    }
+
     RenderContext context =  ctx;
     context.model = ctx.model * LocalMatrix();
     if (material == nullptr) {

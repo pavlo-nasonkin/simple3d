@@ -15,11 +15,25 @@ class Material3D;
 class BoxModel;
 class Skybox;
 class TextureCube;
+class ShadowMap;
+class DepthMaterial;
 
 class SceneEnvironment {
-	std::shared_ptr<TextureCube> irradiance;        // diffuse IBL
-	std::shared_ptr<TextureCube> prefilteredSpec;   // specular IBL
-	std::shared_ptr<Texture2D>   brdfLUT;
+	std::shared_ptr<TextureCube> _irradiance;        // diffuse IBL
+	std::shared_ptr<TextureCube> _prefilteredSpec;   // specular IBL
+	std::shared_ptr<Texture2D>   _brdfLUT;
+public:
+	void Set(std::shared_ptr<TextureCube> irradiance,
+	         std::shared_ptr<TextureCube> prefilteredSpec,
+	         std::shared_ptr<Texture2D> brdfLUT) {
+		_irradiance = std::move(irradiance);
+		_prefilteredSpec = std::move(prefilteredSpec);
+		_brdfLUT = std::move(brdfLUT);
+	}
+	bool IsValid() const { return _irradiance && _prefilteredSpec && _brdfLUT; }
+	const TextureCube* Irradiance() const { return _irradiance.get(); }
+	const TextureCube* PrefilteredSpec() const { return _prefilteredSpec.get(); }
+	const Texture2D*   BrdfLUT() const { return _brdfLUT.get(); }
 };
 
 class Scene3D: public Pivot3D
@@ -36,6 +50,12 @@ class Scene3D: public Pivot3D
 
 	SceneEnvironment _environment;
 	std::shared_ptr<Skybox> _skybox;
+
+	std::shared_ptr<ShadowMap> _shadowMap;
+	std::shared_ptr<DepthMaterial> _depthMaterial;
+	glm::vec3 _shadowCenter { 0.0f, 0.0f, 0.0f };
+	float _shadowRadius = 20.0f;
+	float _shadowStrength = 0.7f; // насколько тень притеняет ambient (0 = только direct, 1 = ambient в тени гаснет)
 
 public:
 	Scene3D();
@@ -62,6 +82,20 @@ public:
 
 	// Включает отрисовку фона из cubemap'а (создаёт Skybox внутри). Требует GL-контекста.
 	void SetSkybox(std::shared_ptr<TextureCube> cubemap);
+
+	// IBL-окружение (irradiance + prefiltered specular + BRDF LUT) для PBRLightingModel.
+	void SetEnvironment(std::shared_ptr<TextureCube> irradiance,
+	                    std::shared_ptr<TextureCube> prefilteredSpec,
+	                    std::shared_ptr<Texture2D> brdfLUT) {
+		_environment.Set(std::move(irradiance), std::move(prefilteredSpec), std::move(brdfLUT));
+	}
+	const SceneEnvironment& GetEnvironment() const { return _environment; }
+
+	// Включает directional shadow mapping (создаёт ShadowMap + DepthMaterial). Требует GL-контекста.
+	void EnableShadows(int mapSize = 2048, float radius = 20.0f);
+	void SetShadowArea(const glm::vec3& center, float radius) { _shadowCenter = center; _shadowRadius = radius; }
+	float GetShadowStrength() const { return _shadowStrength; }
+	void SetShadowStrength(float value) { _shadowStrength = value; }
 
 private:
     void InitLightView();

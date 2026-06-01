@@ -23,6 +23,7 @@ public:
 	void Unbind() override;
     void AddFilter(const std::shared_ptr<Filter3D>& filter);
     void SetLightingModel(std::unique_ptr<ILightingModel> model) { _lighting = std::move(model); }
+    void SetRoughnessScale(float scale) { _roughnessScale = scale; }
     const FiltersList& GetFilters() const;
     void Build() override;
 protected:
@@ -34,4 +35,5 @@ private:
     FiltersList _filters;
     unsigned int _nextUniformId = 0;
     std::unique_ptr<ILightingModel> _lighting;
+    float _roughnessScale = 1.0f;
 };

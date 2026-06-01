@@ -79,6 +79,11 @@ const pivots_list& Pivot3D::Children()
 
 void Pivot3D::Render(const RenderContext &ctx, MaterialBase* material /*= nullptr*/)
 {
+	// В shadow-pass узлы, не отбрасывающие тень, пропускаем вместе с поддеревом.
+	if (ctx.shadowPass && !_castShadows) {
+		return;
+	}
+
 	RenderContext context = ctx;
 
 	context.model = ctx.model * LocalMatrix();

@@ -22,6 +22,10 @@ public:
 	void OnMouseButton(int button, int action);
 	void OnMouseScroll(double xOffset, double yOffset);
 
+	// Управление курсором (реализуется бэкендом ввода, напр. GLFW).
+	virtual void SetCursorPosition(double x, double y) {}
+	virtual void SetCursorVisible(bool visible) {}
+
 protected:
 	double _mouseX = 0.0;
 	double _mouseY = 0.0;

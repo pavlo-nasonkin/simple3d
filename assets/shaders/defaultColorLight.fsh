@@ -10,6 +10,7 @@ in mat3 TBN;
 in vec4 Color;
 
 uniform vec4 uBaseColor;
+uniform float uRoughnessScale; // множитель к R (1.0 = без изменений)
 
 // __LIGHTING_DECLS__
 // __FRAGMENT_DECLS__
@@ -31,6 +32,7 @@ void main()
 
     // __APPLY_METALLIC_FILTERS__
     // __APPLY_ROUGHNESS_FILTERS__
+    R = clamp(R * uRoughnessScale, 0.0, 1.0);
     // __APPLY_AO_FILTERS__
 
     // __APPLY_LIGHTING__

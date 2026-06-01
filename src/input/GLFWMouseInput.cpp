@@ -25,3 +25,13 @@ GLFWMouseInput::~GLFWMouseInput()
 	glfwSetMouseButtonCallback(_window, nullptr);
 	glfwSetScrollCallback(_window, nullptr);
 }
+
+void GLFWMouseInput::SetCursorPosition(double x, double y)
+{
+	glfwSetCursorPos(_window, x, y);
+}
+
+void GLFWMouseInput::SetCursorVisible(bool visible)
+{
+	glfwSetInputMode(_window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_HIDDEN);
+}

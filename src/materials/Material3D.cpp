@@ -4,6 +4,7 @@
 
 #include "GLEWImporter.h"
 #include "Shader.h"
+#include "models/Mesh.h"
 #include "resources/Texture2D.h"
 #include <glm/gtc/type_ptr.hpp>
 #include "Scene3D.h"
@@ -139,12 +140,18 @@ void Material3D::Bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
     }
 
 	if (_lighting) {
-		_lighting->Bind(nextUnit, ctx);
+		RenderContext lightingCtx = ctx;
+		if (mesh) {
+			lightingCtx.receiveShadows = mesh->GetReceiveShadows();
+		}
+		_lighting->Bind(nextUnit, lightingCtx);
 		nextUnit += _lighting->GetTextureUnitCount();
 	}
 
 	GLint baseColorLoc = _uniformCache.GetUniformLocation("uBaseColor");
 	glUniform4f(baseColorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+
+	glUniform1f(_uniformCache.GetUniformLocation("uRoughnessScale"), _roughnessScale);
 }
 
 void Material3D::Unbind()

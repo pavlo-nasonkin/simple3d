@@ -11,4 +11,7 @@ class GLFWMouseInput: public MouseInput
 public:
 	explicit GLFWMouseInput(GLFWwindow* window);
 	~GLFWMouseInput();
+
+	void SetCursorPosition(double x, double y) override;
+	void SetCursorVisible(bool visible) override;
 };

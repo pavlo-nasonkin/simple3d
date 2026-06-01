@@ -31,6 +31,8 @@ protected:
 	glm::vec3 _scale;
 	unsigned int _id;
     std::string _name = "Pivot3D";
+	bool _castShadows = true;     // попадает ли узел в shadow-pass (отбрасывает тень)
+	bool _receiveShadows = true;  // затеняется ли узел в основном проходе
 public:
 	Pivot3D();
 	~Pivot3D() override;
@@ -60,6 +62,11 @@ public:
 
     const std::string& GetName() const;
     void SetName(const std::string &name);
+
+	bool GetCastShadows() const { return _castShadows; }
+	void SetCastShadows(bool value) { _castShadows = value; }
+	bool GetReceiveShadows() const { return _receiveShadows; }
+	void SetReceiveShadows(bool value) { _receiveShadows = value; }
 
 protected:
 	virtual glm::mat4 LocalMatrix() const;

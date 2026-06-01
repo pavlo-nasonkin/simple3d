@@ -4,6 +4,7 @@
 
 // Std. Includes
 #include <vector>
+#include <cmath>
 
 // GL Includes
 #include <GL/glew.h>
@@ -29,7 +30,7 @@ enum Camera_Movement {
 
 // Default camera values
 
-const GLfloat SPEED = 3.0f;
+const GLfloat SPEED = 7.0f;
 const GLfloat SENSITIVTY = 0.25f;
 
 
@@ -38,9 +39,11 @@ const GLfloat SENSITIVTY = 0.25f;
 class FirstPersonCamera: public Camera, IUpdateListener, IMouseListener
 {
 private:
-	GLfloat _lastX = 400;
-	GLfloat _lastY = 300;
 	bool _firstMouse = true;
+	// Цель поворота (накапливается мышью); Yaw/Pitch плавно догоняют её в HandleUpdate.
+	GLfloat _targetYaw = Camera::YAW;
+	GLfloat _targetPitch = Camera::PITCH;
+	GLfloat _rotationSmoothing = 12.0f; // больше = быстрее/жёстче, меньше = плавнее
 public:
 	
 	// Camera options
@@ -56,6 +59,9 @@ public:
 	{
 		Engine::GetInstance().GetUpdateBroadcaster()->AddListener(this);
 		Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_MOVE);
+		Engine::GetInstance().GetMouseInput()->SetCursorVisible(false);
+		_targetYaw = Yaw;
+		_targetPitch = Pitch;
 	}
 	// Constructor with scalar values
 	FirstPersonCamera(GLfloat posX, GLfloat posY, GLfloat posZ, GLfloat upX, GLfloat upY, GLfloat upZ, GLfloat yaw, GLfloat pitch) 
@@ -64,12 +70,16 @@ public:
 	{
 		Engine::GetInstance().GetUpdateBroadcaster()->AddListener(this);
 		Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_MOVE);
+		Engine::GetInstance().GetMouseInput()->SetCursorVisible(false);
+		_targetYaw = Yaw;
+		_targetPitch = Pitch;
 	}
 
 	~FirstPersonCamera() override
 	{
 		Engine::GetInstance().GetUpdateBroadcaster()->RemoveListener(this);
 		Engine::GetInstance().GetMouseInput()->RemoveListener(this, MouseInput::MOUSE_MOVE);
+		Engine::GetInstance().GetMouseInput()->SetCursorVisible(true);
 	};
 
 	// Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
@@ -92,20 +102,18 @@ public:
 		xoffset *= this->MouseSensitivity;
 		yoffset *= this->MouseSensitivity;
 
-		this->Yaw += xoffset;
-		this->Pitch += yoffset;
+		// Мышь двигает ЦЕЛЕВЫЕ углы; фактические Yaw/Pitch догоняют их с изингом в HandleUpdate.
+		_targetYaw += xoffset;
+		_targetPitch += yoffset;
 
 		// Make sure that when pitch is out of bounds, screen doesn't get flipped
 		if (constrainPitch)
 		{
-			if (this->Pitch > 89.0f)
-				this->Pitch = 89.0f;
-			if (this->Pitch < -89.0f)
-				this->Pitch = -89.0f;
+			if (_targetPitch > 89.0f)
+				_targetPitch = 89.0f;
+			if (_targetPitch < -89.0f)
+				_targetPitch = -89.0f;
 		}
-
-		// Update Front, Right and Up Vectors using the updated Euler angles
-		this->updateCameraVectors();
 	}
 
 	// Processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
@@ -125,6 +133,12 @@ public:
 
 	void HandleUpdate(float deltaTime) override
 	{
+		// Изинг поворота: экспоненциальное сглаживание, кадронезависимое.
+		const GLfloat a = 1.0f - std::exp(-_rotationSmoothing * deltaTime);
+		this->Yaw   += (_targetYaw   - this->Yaw)   * a;
+		this->Pitch += (_targetPitch - this->Pitch) * a;
+		this->updateCameraVectors();
+
 		if (Engine::GetInstance().GetKeyboardInput()->IsKeyPressed(GLFW_KEY_W))
 		{
 			ProcessKeyboard(Camera_Movement::FORWARD, deltaTime);
@@ -149,19 +163,28 @@ public:
 
 	void HandleMouseMove(double xpos, double ypos) override
 	{
+		const GLfloat centerX = _screenWidth * 0.5f;
+		const GLfloat centerY = _screenHeight * 0.5f;
+		const auto& mouse = Engine::GetInstance().GetMouseInput();
+
+		// На первом событии просто центрируем курсор, чтобы не было резкого скачка.
 		if (_firstMouse)
 		{
-			_lastX = xpos;
-			_lastY = ypos;
 			_firstMouse = false;
+			mouse->SetCursorPosition(centerX, centerY);
+			return;
 		}
 
-		GLfloat xoffset = xpos - _lastX;
-		GLfloat yoffset = _lastY - ypos; // Reversed since y-coordinates range from bottom to top
-		_lastX = xpos;
-		_lastY = ypos;
-		
-		ProcessMouseMovement(xoffset, yoffset);
+		// Смещение считаем относительно центра экрана.
+		GLfloat xoffset = static_cast<GLfloat>(xpos) - centerX;
+		GLfloat yoffset = centerY - static_cast<GLfloat>(ypos); // Y инвертирован
+
+		if (xoffset != 0.0f || yoffset != 0.0f)
+		{
+			ProcessMouseMovement(xoffset, yoffset);
+			// Возвращаем курсор в центр — следующее смещение снова будет от центра.
+			mouse->SetCursorPosition(centerX, centerY);
+		}
 	}
 
 

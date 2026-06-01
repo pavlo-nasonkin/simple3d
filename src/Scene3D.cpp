@@ -8,7 +8,9 @@
 
 #include "materials/Material3D.h"
 #include "materials/ObjectIdMaterial.h"
+#include "materials/DepthMaterial.h"
 #include "render/Skybox.h"
+#include "render/ShadowMap.h"
 #include "resources/TextureCube.h"
 
 Scene3D::Scene3D() :
@@ -41,14 +43,44 @@ void Scene3D::Update()
 
 void Scene3D::Render(const RenderContext& ctx, MaterialBase* material /*= nullptr*/)
 {
+	RenderContext mainCtx = ctx;
+
+	// Shadow-pass: рендер глубины сцены из точки зрения солнца (только в обычном проходе).
+	if (_shadowMap && _depthMaterial && !material) {
+		const glm::mat4 lightSpace =
+			ShadowMap::ComputeLightSpaceMatrix(_dirLightDirection, _shadowCenter, _shadowRadius);
+
+		RenderContext shadowCtx = ctx;
+		shadowCtx.view = glm::mat4(1.0f);     // view*projection = lightSpace * I
+		shadowCtx.projection = lightSpace;
+		shadowCtx.shadowPass = true;
+
+		_shadowMap->Begin();
+		Pivot3D::Render(shadowCtx, _depthMaterial.get());
+		_shadowMap->End();
+
+		mainCtx.lightSpaceMatrix = lightSpace;
+		mainCtx.shadowMap = _shadowMap->DepthTexture();
+		mainCtx.hasShadows = true;
+	}
+
 	PrepareRender();
-	Pivot3D::Render(ctx, material);
+	Pivot3D::Render(mainCtx, material);
 	// Skybox рисуется последним и только в обычном цветовом проходе
 	// (не в id-pass'е ObjectSelector'а, где material != nullptr).
 	if (_skybox && !material) {
-		_skybox->Render(ctx.view, ctx.projection);
+		_skybox->Render(mainCtx.view, mainCtx.projection);
 	}
     PostRender();
+}
+
+void Scene3D::EnableShadows(int mapSize, float radius)
+{
+	_shadowMap = std::make_shared<ShadowMap>(mapSize);
+	_depthMaterial = std::make_shared<DepthMaterial>("../assets/shaders/depth.vsh",
+	                                                 "../assets/shaders/depth.fsh");
+	_depthMaterial->Build();
+	_shadowRadius = radius;
 }
 
 void Scene3D::SetSkybox(std::shared_ptr<TextureCube> cubemap)

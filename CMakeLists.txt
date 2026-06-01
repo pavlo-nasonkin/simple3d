@@ -37,6 +37,8 @@ set(SOURCE_FILES
         src/materials/MaterialBase.h
         src/materials/ObjectIdMaterial.cpp
         src/materials/ObjectIdMaterial.h
+        src/materials/DepthMaterial.cpp
+        src/materials/DepthMaterial.h
         src/materials/ShaderFactory.cpp
         src/materials/ShaderFactory.h
         src/materials/SkinnedMaterial3D.cpp
@@ -57,6 +59,10 @@ set(SOURCE_FILES
         src/render/RenderModeHelper.h
         src/render/Skybox.cpp
         src/render/Skybox.h
+        src/render/IBLBaker.cpp
+        src/render/IBLBaker.h
+        src/render/ShadowMap.cpp
+        src/render/ShadowMap.h
         src/render/UniformsLocationCache.cpp
         src/render/UniformsLocationCache.h
         src/render/VertexAttribute.h
@@ -78,6 +84,8 @@ set(SOURCE_FILES
         src/utils/StringUtils.cpp
         src/models/BoxModel.cpp
         src/models/BoxModel.h
+        src/models/PlaneModel.cpp
+        src/models/PlaneModel.h
         src/Engine.cpp
         src/Engine.h
         src/models/ExternalModel.cpp
