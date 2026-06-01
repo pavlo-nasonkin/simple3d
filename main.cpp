@@ -18,6 +18,7 @@
 #include "materials/ShaderFactory.h"
 
 #include "models/ExternalModel.h"
+#include "resources/HDRLoader.h"
 
 
 GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
@@ -55,7 +56,8 @@ int main() {
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
-
+		auto cubemap = HDRLoader::EquirectFileToCubemap("../assets/env/sunny_rose_garden_4k.hdr");
+		scene3D->SetSkybox(cubemap);
 
 		// auto box = std::make_shared<BoxModel>();
 		//

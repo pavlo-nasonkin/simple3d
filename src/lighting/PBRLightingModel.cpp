@@ -6,15 +6,11 @@
 const std::string PBRLightingModel::_declarationsCode = R"(
 const float PI = 3.14159265359;
 
-struct Light {
-    vec3 position;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
+struct DirLight { vec3 direction; vec3 color; };
 
 uniform vec3 viewPos;
-uniform Light light;
+uniform DirLight dirLight;
+uniform vec3 ambientLight; // плоский заполняющий свет окружения (до IBL)
 
 float DistributionGGX(float NdotH, float roughness) {
     float a  = roughness * roughness;
@@ -39,8 +35,9 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0) {
 
 const std::string PBRLightingModel::_lightingCode = R"(
     vec3 V = normalize(viewPos - FragPos);
-    vec3 L = normalize(light.position - FragPos);
+    vec3 L = normalize(-dirLight.direction);
     vec3 H = normalize(V + L);
+
 
     float NdotL = max(dot(N, L), 0.0);
     float NdotV = max(dot(N, V), 0.0);
@@ -58,10 +55,12 @@ const std::string PBRLightingModel::_lightingCode = R"(
     vec3 kD = (vec3(1.0) - F) * (1.0 - M);
     vec3 diffuse = kD * BASE_COLOR / PI;
 
-    vec3 radiance = light.diffuse;
+    vec3 radiance = dirLight.color;
     vec3 Lo = (diffuse + specular) * radiance * NdotL;
 
-    vec3 ambient = light.ambient * BASE_COLOR * AO;
+    // Плоский ambient как заглушка до IBL. Множитель (1 - M) убирает диффузный
+    // ambient у металлов (у них нет диффуза) — иначе металл «светится» базовым цветом.
+    vec3 ambient = ambientLight * BASE_COLOR * (1.0 - M) * AO;
     vec3 outColor = ambient + Lo + EMISSIVE;
 
     outColor = outColor / (outColor + vec3(1.0));   // Reinhard
@@ -83,22 +82,15 @@ void PBRLightingModel::Bind(GLuint firstTextureUnit, const RenderContext &ctx) {
     GLint viewPosLoc = _uniformCache.GetUniformLocation("viewPos");
     glUniform3f(viewPosLoc, ctx.camera->Position.x, ctx.camera->Position.y, ctx.camera->Position.z);
 
-    GLint lightPositionLoc = _uniformCache.GetUniformLocation("light.position");
-    GLint lightAmbientLoc = _uniformCache.GetUniformLocation("light.ambient");
-    GLint lightDiffuseLoc = _uniformCache.GetUniformLocation("light.diffuse");
-    GLint lightSpecularLoc = _uniformCache.GetUniformLocation("light.specular");
-    const glm::vec3* lightAmbient = ctx.scene3D->getLightAmbient();
-    const glm::vec3* lightDiffuse = ctx.scene3D->getLightDiffuse();
-    const glm::vec3* lightSpecular = ctx.scene3D->getLightSpecular();
-    const glm::vec3* lightPos = ctx.scene3D->getLightPosition();
+    // Directional light (sun): direction + radiance (color * intensity), без attenuation.
+    const glm::vec3* dir = ctx.scene3D->GetDirLightDirection();
+    const glm::vec3 radiance = (*ctx.scene3D->GetDirLightColor()) * ctx.scene3D->GetDirLightIntensity();
+    glUniform3f(_uniformCache.GetUniformLocation("dirLight.direction"), dir->x, dir->y, dir->z);
+    glUniform3f(_uniformCache.GetUniformLocation("dirLight.color"), radiance.x, radiance.y, radiance.z);
 
-    glUniform3f(lightAmbientLoc, lightAmbient->x, lightAmbient->y, lightAmbient->z);
-    glUniform3f(lightDiffuseLoc, lightDiffuse->x, lightDiffuse->y, lightDiffuse->z);
-    glUniform3f(lightSpecularLoc, lightSpecular->x, lightSpecular->y, lightSpecular->z);
-    glUniform3f(lightPositionLoc, lightPos->x, lightPos->y, lightPos->z);
-
-    // Also set each mesh's shininess property to a default value (if you want you could extend this to another mesh property and possibly change this value)
-    glUniform1f(_uniformCache.GetUniformLocation("material.shininess"), 16.0f);
+    // Плоский ambient окружения (тот же, что использует Phong), независим от солнца.
+    const glm::vec3* ambient = ctx.scene3D->GetLightAmbient();
+    glUniform3f(_uniformCache.GetUniformLocation("ambientLight"), ambient->x, ambient->y, ambient->z);
 }
 
 void PBRLightingModel::OnProgramBuild(GLuint program) {

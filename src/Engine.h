@@ -3,11 +3,11 @@
 #include <string>
 #include <memory>
 #include "Scene3D.h"
+#include "object_selector/ObjectSelector.h"
 class RenderModeHelper;
 class UpdateBroadcaster;
 class KeyboardInput;
 class MouseInput;
-class ObjectSelector;
 class TextureManager;
 struct GLFWwindow;
 class Engine

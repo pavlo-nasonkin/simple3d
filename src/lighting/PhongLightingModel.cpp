@@ -41,10 +41,10 @@ void PhongLightingModel::Bind(GLuint firstTextureUnit, const RenderContext &ctx)
     GLint lightAmbientLoc = _uniformCache.GetUniformLocation("light.ambient");
     GLint lightDiffuseLoc = _uniformCache.GetUniformLocation("light.diffuse");
     GLint lightSpecularLoc = _uniformCache.GetUniformLocation("light.specular");
-    const glm::vec3* lightAmbient = ctx.scene3D->getLightAmbient();
-    const glm::vec3* lightDiffuse = ctx.scene3D->getLightDiffuse();
-    const glm::vec3* lightSpecular = ctx.scene3D->getLightSpecular();
-    const glm::vec3* lightPos = ctx.scene3D->getLightPosition();
+    const glm::vec3* lightAmbient = ctx.scene3D->GetLightAmbient();
+    const glm::vec3* lightDiffuse = ctx.scene3D->GetLightDiffuse();
+    const glm::vec3* lightSpecular = ctx.scene3D->GetLightSpecular();
+    const glm::vec3* lightPos = ctx.scene3D->GetLightPosition();
 
     glUniform3f(lightAmbientLoc, lightAmbient->x, lightAmbient->y, lightAmbient->z);
     glUniform3f(lightDiffuseLoc, lightDiffuse->x, lightDiffuse->y, lightDiffuse->z);

@@ -55,6 +55,8 @@ set(SOURCE_FILES
         src/object_selector/ObjectSelector.h
         src/render/RenderModeHelper.cpp
         src/render/RenderModeHelper.h
+        src/render/Skybox.cpp
+        src/render/Skybox.h
         src/render/UniformsLocationCache.cpp
         src/render/UniformsLocationCache.h
         src/render/VertexAttribute.h
@@ -62,10 +64,13 @@ set(SOURCE_FILES
         src/render/VertexLayout.h
         src/render/VertexLayoutPresets.h
         src/render/VertexTypes.h
-        src/resources/Texture2D.cpp
         src/resources/Texture2D.h
         src/resources/TextureManager.cpp
         src/resources/TextureManager.h
+        src/resources/TextureCube.cpp
+        src/resources/TextureCube.h
+        src/resources/HDRLoader.cpp
+        src/resources/HDRLoader.h
         src/utils/FileUtils.cpp
         src/utils/FileUtils.h
         src/utils/Math.h
