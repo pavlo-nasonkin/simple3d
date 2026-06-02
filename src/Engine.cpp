@@ -6,6 +6,7 @@
 
 #include "UpdateBroadcaster.h"
 #include "render/RenderModeHelper.h"
+#include "render/GeometryRegistry.h"
 #include "resources/TextureManager.h"
 #include "input/GLFWKeyboardInput.h"
 #include "input/GLFWMouseInput.h"
@@ -33,6 +34,7 @@ void Engine::Init(GLFWwindow* window)
     _mouseInput = std::make_shared<GLFWMouseInput>(window);
     _keyboardInput = std::make_shared<GLFWKeyboardInput>(window);
     _textureManager = std::make_unique<TextureManager>();
+    _geometryRegistry = std::make_unique<GeometryRegistry>();
     _renderModeHelper = std::make_unique<RenderModeHelper>();
     _startTime = GetCurrentTimeMillis();
 }
@@ -40,6 +42,10 @@ void Engine::Init(GLFWwindow* window)
 void Engine::Cleanup()
 {
     _renderModeHelper = nullptr;
+    if (_geometryRegistry) {
+        _geometryRegistry->Cleanup();
+    }
+    _geometryRegistry = nullptr;
     _textureManager = nullptr;
     _objectSelector = nullptr;
     _mouseInput = nullptr;

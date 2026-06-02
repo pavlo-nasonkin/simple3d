@@ -14,6 +14,8 @@
 #include "materials/filters/NormalMapFilter.h"
 #include "lighting/PBRLightingModel.h"
 #include "render/VertexLayoutPresets.h"
+#include "render/Geometry.h"
+#include "render/GeometryRegistry.h"
 #include "resources/Texture2D.h"
 #include "resources/TextureManager.h"
 
@@ -112,16 +114,21 @@ std::shared_ptr<Mesh> PlaneModel::ProcessMesh()
 
 	mat->Build();
 
-	// per-instance копия вершин с UV, домноженными на _tiling (чтобы текстура не растягивалась)
-	std::vector<VertexTypes::Vertex> verts = planeVertices;
-	if (_tiling != 1.0f) {
-		for (auto& v : verts) {
-			v.TexCoords *= _tiling;
-		}
-	}
+	// Геометрия зависит только от tiling (UV); шарим её через реестр по ключу с tiling.
+	const std::string geometryKey = "primitive:plane#tiling=" + std::to_string(_tiling);
+	auto geometry = Engine::GetInstance().GetGeometryRegistry().GetOrCreate(
+		geometryKey,
+		[this] {
+			std::vector<VertexTypes::Vertex> verts = planeVertices;
+			if (_tiling != 1.0f) {
+				for (auto& v : verts) {
+					v.TexCoords *= _tiling;
+				}
+			}
+			return Geometry(VertexLayouts::Standard(), verts, planeIndices);
+		});
 
-	auto mesh = std::make_shared<Mesh>(mat);
-	mesh->SetupMesh(VertexLayouts::Standard(), std::as_bytes(std::span(verts)), std::span(planeIndices));
+	auto mesh = std::make_shared<Mesh>(geometry, mat);
 	mesh->SetName(std::string("Plane") + std::to_string(mesh->GetId()));
 	return mesh;
 }

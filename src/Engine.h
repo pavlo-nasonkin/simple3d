@@ -9,6 +9,7 @@ class UpdateBroadcaster;
 class KeyboardInput;
 class MouseInput;
 class TextureManager;
+class GeometryRegistry;
 struct GLFWwindow;
 class Engine
 {
@@ -57,10 +58,15 @@ public:
 		assert(_textureManager && "Engine::Init must be called first");
 		return _textureManager;
 	}
+	GeometryRegistry& GetGeometryRegistry() const {
+		assert(_geometryRegistry && "Engine::Init must be called first");
+		return *_geometryRegistry;
+	}
 
 	void SetObjectSelector(const std::shared_ptr<ObjectSelector>& value) { _objectSelector = value; }
 private:
 	std::unique_ptr<TextureManager> _textureManager = nullptr;
+	std::unique_ptr<GeometryRegistry> _geometryRegistry = nullptr;
 	std::unique_ptr<RenderModeHelper> _renderModeHelper = nullptr;
 	std::shared_ptr<ObjectSelector> _objectSelector = nullptr;
 

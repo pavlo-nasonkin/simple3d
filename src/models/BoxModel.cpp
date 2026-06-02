@@ -8,6 +8,8 @@
 #include "materials/Material3D.h"
 #include "materials/filters/ColorFilter.h"
 #include "render/VertexLayoutPresets.h"
+#include "render/Geometry.h"
+#include "render/GeometryRegistry.h"
 
 BoxModel::BoxModel()
 {
@@ -28,8 +30,10 @@ std::shared_ptr<Mesh> BoxModel::ProcessMesh()
 	_colorFilter->SetBlendMode(Filter3D::BlendMode::MULTIPLY);
     mat->AddFilter(_colorFilter);
     mat->Build();
-    auto mesh = std::make_shared<Mesh>(mat);
-	mesh->SetupMesh(VertexLayouts::Standard(), std::as_bytes(std::span(boxVertices)), std::span(boxIndices));
+    auto geometry = Engine::GetInstance().GetGeometryRegistry().GetOrCreate(
+        "primitive:box",
+        [] { return Geometry(VertexLayouts::Standard(), boxVertices, boxIndices); });
+    auto mesh = std::make_shared<Mesh>(geometry, mat);
     mesh->SetName(std::string("Box") + std::to_string(mesh->GetId()));
     return mesh;
 }

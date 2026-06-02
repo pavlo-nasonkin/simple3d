@@ -15,6 +15,8 @@
 #include "materials/SkinnedMaterial3D.h"
 #include "materials/filters/NormalMapFilter.h"
 #include "render/VertexLayoutPresets.h"
+#include "render/Geometry.h"
+#include "render/GeometryRegistry.h"
 #include "utils/AssimpGlm.h"
 #include "materials/filters/Filter3d.h"
 
@@ -256,13 +258,21 @@ std::shared_ptr<Mesh> ExternalModel::ProcessMesh(aiMesh * mesh, const aiScene * 
     }
 
     mat->Build();
-    auto m = std::make_shared<Mesh>(mat);
-    m->SetupMesh(VertexLayouts::Standard(), std::as_bytes(std::span(vertices)), std::span(indices));
 
-    if (!bones.empty()) {
-        m->AddSecondaryBuffer(VertexLayouts::Skinning(), std::as_bytes(std::span(bones)));
-    }
+    // Ключ кэша: путь к файлу + индекс материала + имя меша (в одном файле много частей).
+    const std::string geometryKey = _path + "#" + std::to_string(mesh->mMaterialIndex)
+                                   + "#" + std::string(mesh->mName.C_Str());
+    auto geometry = Engine::GetInstance().GetGeometryRegistry().GetOrCreate(
+        geometryKey,
+        [&] {
+            Geometry g(VertexLayouts::Standard(), vertices, indices);
+            if (!bones.empty()) {
+                g.AddSecondaryBuffer(VertexLayouts::Skinning(), std::as_bytes(std::span(bones)));
+            }
+            return g;
+        });
 
+    auto m = std::make_shared<Mesh>(geometry, mat);
     m->SetName(mesh->mName.C_Str());
     return m;
 }

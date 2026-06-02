@@ -57,6 +57,9 @@ set(SOURCE_FILES
         src/object_selector/ObjectSelector.h
         src/render/RenderModeHelper.cpp
         src/render/RenderModeHelper.h
+        src/render/Geometry.cpp
+        src/render/Geometry.h
+        src/render/GeometryRegistry.h
         src/render/Skybox.cpp
         src/render/Skybox.h
         src/render/IBLBaker.cpp

@@ -418,7 +418,7 @@ The standard solution (Unity: `Mesh` + `MeshRenderer`; Unreal:
 
 ### Substages
 
-- [ ] **6.1. `Geometry` class** — an immutable owner of GL resources, with no
+- [x] **6.1. `Geometry` class** — an immutable owner of GL resources, with no
   transform and no hierarchy. Shared via `std::shared_ptr<Geometry>`.
   ```cpp
   // src/render/Geometry.h
@@ -454,7 +454,7 @@ The standard solution (Unity: `Mesh` + `MeshRenderer`; Unreal:
   - Extracted from the current `Mesh` — takes everything GL-related.
   - File: `src/render/Geometry.h/.cpp`.
 
-- [ ] **6.2. `Mesh` becomes a lightweight scene node.**
+- [x] **6.2. `Mesh` becomes a lightweight scene node.**
   ```cpp
   // src/models/Mesh.h
   class Mesh : public Pivot3D {
@@ -484,7 +484,7 @@ The standard solution (Unity: `Mesh` + `MeshRenderer`; Unreal:
   - `SetupMesh` disappears — its work moves into `Geometry::Geometry`.
   - Files: `src/models/Mesh.h/.cpp`.
 
-- [ ] **6.3. `GeometryRegistry` — a cache via `weak_ptr`.**
+- [x] **6.3. `GeometryRegistry` — a cache via `weak_ptr`.**
   ```cpp
   // src/render/GeometryRegistry.h
   class GeometryRegistry {
@@ -512,7 +512,9 @@ The standard solution (Unity: `Mesh` + `MeshRenderer`; Unreal:
     `glfwTerminate`.
   - Files: `src/render/GeometryRegistry.h/.cpp`, `src/Engine.h/.cpp`.
 
-- [ ] **6.4. Migrate `BoxModel`.** The box geometry becomes a singleton
+- [x] **6.4. Migrate `BoxModel`.** (Сделано вместе с 6.2 — смена API `Mesh` этого
+  требует.) Также мигрирован `PlaneModel` (ключ кэша включает `tiling`, т.к. UV
+  зависят от него). The box geometry becomes a singleton
   through the Registry.
   ```cpp
   std::shared_ptr<Mesh> BoxModel::processMesh()
@@ -530,7 +532,7 @@ The standard solution (Unity: `Mesh` + `MeshRenderer`; Unreal:
     100 lightweight Mesh instances with different transforms.
   - File: `src/models/BoxModel.cpp`.
 
-- [ ] **6.5. Migrate `ExternalModel`.** The cache key is the file path +
+- [x] **6.5. Migrate `ExternalModel`.** (Сделано вместе с 6.2.) The cache key is the file path +
   the mesh index (a single .obj/.fbx can contain several mesh parts).
   ```cpp
   std::string geometryKey = _path + "#" + std::to_string(mesh->mMaterialIndex)
