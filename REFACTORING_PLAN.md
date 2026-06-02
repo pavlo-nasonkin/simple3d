@@ -1,199 +1,199 @@
-# План рефакторинга simple3d
+# simple3d Refactoring Plan
 
-Документ описывает порядок устранения проблем, найденных при ревью движка.
-Задачи отсортированы по приоритету: сначала рантайм-блокеры, затем архитектура,
-затем стабильность, затем стиль и оптимизации.
+This document describes the order in which to fix the issues found during the
+engine review. Tasks are sorted by priority: runtime blockers first, then
+architecture, then stability, then style and optimizations.
 
-Обозначения статуса задач: `[ ]` — не сделано, `[~]` — в работе, `[x]` — готово.
-
----
-
-## Этап 0. Подготовка
-
-- [x] **0.1. Включить C++17.** В `CMakeLists.txt` поменять `set(CMAKE_CXX_STANDARD 11)` на `17` (или `20`). Открывает доступ к `std::filesystem`, `std::string_view`, structured bindings.
-- [x] **0.2. Завести ветку `refactor/engine-core`.** Все правки этапов 1–4 идти инкрементальными коммитами по одному пункту.
-- [x] **0.3. Минимальная smoke-сцена.** Сделать в `main.cpp` рядом с `nanosuit` загрузку одного `BoxModel` без анимации — чтобы видеть результаты правок ещё до починки `ExternalModel`.
+Task status legend: `[ ]` — not done, `[~]` — in progress, `[x]` — done.
 
 ---
 
-## Этап 1. Рантайм-блокеры (то, без чего сцена не отрисуется или упадёт)
+## Stage 0. Preparation
 
-Цель этапа: запустить движок до отображения куба и nanosuit без падений.
+- [x] **0.1. Enable C++17.** In `CMakeLists.txt` change `set(CMAKE_CXX_STANDARD 11)` to `17` (or `20`). Unlocks `std::filesystem`, `std::string_view`, structured bindings.
+- [x] **0.2. Create the `refactor/engine-core` branch.** All changes in stages 1–4 should go in incremental commits, one item per commit.
+- [x] **0.3. Minimal smoke scene.** In `main.cpp`, next to `nanosuit`, load a single `BoxModel` without animation — so we can see the results of changes even before `ExternalModel` is fixed.
 
-- [x] **1.1. Заменить `glm::mat4()` на `glm::mat4(1.0f)`.** В современном GLM (vcpkg ставит ≥ 0.9.9) `glm::mat4()` создаёт нулевую матрицу — объекты схлопываются в точку.
-  - Файлы: `src/Pivot3D.cpp` (`render`), `src/ExternalModel.cpp` (`render`), `src/camera/FreeLookCamera.cpp` (`handleMouseMove`).
-  - Проверка: после правки куб виден на экране.
+---
 
-- [x] **1.2. Починить порядок TRS в `Pivot3D::render`.** Сейчас получается `S * R * T` вместо `T * R * S`, объект двигается в локальных координатах.
+## Stage 1. Runtime blockers (things without which the scene won't render or will crash)
+
+Goal of this stage: get the engine running up to displaying the cube and nanosuit without crashes.
+
+- [x] **1.1. Replace `glm::mat4()` with `glm::mat4(1.0f)`.** In modern GLM (vcpkg ships ≥ 0.9.9) `glm::mat4()` creates a zero matrix — objects collapse to a point.
+  - Files: `src/Pivot3D.cpp` (`render`), `src/ExternalModel.cpp` (`render`), `src/camera/FreeLookCamera.cpp` (`handleMouseMove`).
+  - Check: after the fix, the cube is visible on screen.
+
+- [x] **1.2. Fix the TRS order in `Pivot3D::render`.** Currently it ends up as `S * R * T` instead of `T * R * S`; the object moves in local coordinates.
   ```cpp
   _model = glm::mat4(1.0f);
   _model = glm::translate(_model, _position);
-  _model *= rotationMatrix();      // applyTransformRotation вынести в helper
+  _model *= rotationMatrix();      // extract applyTransformRotation into a helper
   _model = glm::scale(_model, _scale);
   ```
-  - Файлы: `src/Pivot3D.cpp`, `src/ExternalModel.cpp` (тот же блок повторён), `src/Mesh.cpp` (`applyTransformRotation` со сдвигом π/2 — пересмотреть, нужен ли он).
+  - Files: `src/Pivot3D.cpp`, `src/ExternalModel.cpp` (same block duplicated), `src/Mesh.cpp` (`applyTransformRotation` with the π/2 offset — review whether it's needed).
 
-- [x] **1.3. Вызывать `init()` после добавления в сцену.**
-  - В `Pivot3D::addChild` после привязки `_parent` вызывать `child->init()` (или ввести двухфазную инициализацию: добавить → setupScene).
-  - Альтернатива: в `main.cpp` явно вызвать `soldier->init()` и `scene.init()`.
-  - Файлы: `src/Pivot3D.cpp`, `main.cpp`.
-  - Проверка: без этого `ExternalModel::_scene == nullptr` → крэш на первом кадре.
+- [x] **1.3. Call `init()` after adding to the scene.**
+  - In `Pivot3D::addChild`, after binding `_parent`, call `child->init()` (or introduce two-phase initialization: add → setupScene).
+  - Alternative: in `main.cpp` explicitly call `soldier->init()` and `scene.init()`.
+  - Files: `src/Pivot3D.cpp`, `main.cpp`.
+  - Check: without this `ExternalModel::_scene == nullptr` → crash on the first frame.
 
-- [x] **1.4. Установить `Device3D::scene3D`.** Без этого все материалы (`Material3D::bind`, `ColorMaterial::bind`) падают по `nullptr` на запросе `getLightAmbient()` и т.п.
-  - Сейчас `Device3D::scene3D` — `std::shared_ptr<Scene3D>`, никогда не присваивается. Простейший фикс: в `main.cpp` сделать `auto scene = std::make_shared<Scene3D>(...)` и `Device3D::scene3D = scene`.
-  - Это требует превращения `scene` из стек-объекта в `shared_ptr` (см. 2.1).
+- [x] **1.4. Set `Device3D::scene3D`.** Without this all materials (`Material3D::bind`, `ColorMaterial::bind`) crash on `nullptr` when calling `getLightAmbient()` etc.
+  - Currently `Device3D::scene3D` is a `std::shared_ptr<Scene3D>` that is never assigned. Simplest fix: in `main.cpp` do `auto scene = std::make_shared<Scene3D>(...)` and `Device3D::scene3D = scene`.
+  - This requires turning `scene` from a stack object into a `shared_ptr` (see 2.1).
 
-- [x] **1.5. Починить баг копирования в `Vector3f(const float*)`.**
+- [x] **1.5. Fix the copy bug in `Vector3f(const float*)`.**
   ```cpp
   Vector3f(const float* p) { x = p[0]; y = p[1]; z = p[2]; }
   ```
-  - Файл: `src/utils/Math3d.h`.
+  - File: `src/utils/Math3d.h`.
 
-- [x] **1.6. Добавить `break;` в `FreeLookCamera::handleMouseButton`.** Сейчас case middle проваливается в case right.
-  - Файл: `src/camera/FreeLookCamera.cpp`.
+- [x] **1.6. Add `break;` in `FreeLookCamera::handleMouseButton`.** Currently the middle case falls through into the right case.
+  - File: `src/camera/FreeLookCamera.cpp`.
 
-- [x] **1.7. Починить декларацию `KeyboardInput::_keys`.**
-  - В `.cpp`: `bool KeyboardInput::_keys[1024] = {};` (вместо `bool KeyboardInput::_keys[];`).
-  - Файл: `src/input/KeyboardInput.cpp`.
+- [x] **1.7. Fix the declaration of `KeyboardInput::_keys`.**
+  - In the `.cpp`: `bool KeyboardInput::_keys[1024] = {};` (instead of `bool KeyboardInput::_keys[];`).
+  - File: `src/input/KeyboardInput.cpp`.
 
-- [x] **1.8. Защититься от моделей без анимации.** В `ExternalModel::BoneTransform` и `ReadNodeHeirarchy` проверять `_scene->mNumAnimations > 0` перед обращением к `mAnimations[0]`.
-  - Файл: `src/ExternalModel.cpp`.
+- [x] **1.8. Guard against models without animation.** In `ExternalModel::BoneTransform` and `ReadNodeHeirarchy`, check `_scene->mNumAnimations > 0` before accessing `mAnimations[0]`.
+  - File: `src/ExternalModel.cpp`.
 
-- [x] **1.9. Проверка результата `SOIL_load_image`.** Логировать `SOIL_last_result()`, не передавать `nullptr` в `glTexImage2D`.
-  - Файл: `src/resources/TextureManager.h`.
+- [x] **1.9. Check the result of `SOIL_load_image`.** Log `SOIL_last_result()`, don't pass `nullptr` to `glTexImage2D`.
+  - File: `src/resources/TextureManager.h`.
 
 ---
 
-## Этап 2. Архитектурные блокеры (lifetime + scene graph)
+## Stage 2. Architectural blockers (lifetime + scene graph)
 
-Цель этапа: иерархия трансформов работает, объекты гарантированно живут и
-освобождаются корректно.
+Goal of this stage: the transform hierarchy works, objects are guaranteed to
+stay alive and to be released correctly.
 
-- [x] **2.1. Сцена как `shared_ptr`.** Создавать `Scene3D` через `std::make_shared`, потому что `Pivot3D` наследует `std::enable_shared_from_this`. Без этого любой `shared_from_this()` на сцене — `bad_weak_ptr`.
-  - Файлы: `main.cpp`.
+- [x] **2.1. Scene as a `shared_ptr`.** Create `Scene3D` via `std::make_shared`, because `Pivot3D` inherits from `std::enable_shared_from_this`. Without this any `shared_from_this()` on the scene is a `bad_weak_ptr`.
+  - Files: `main.cpp`.
 
-- [x] **2.2. Родитель = `std::weak_ptr<Pivot3D>`.** Сейчас `_parent` — `shared_ptr`, что создаёт цикл и утечку графа.
-  - Заменить: `std::weak_ptr<Pivot3D> _parent;`.
-  - Везде, где `_parent` используется: `auto p = _parent.lock(); if (p) ...`.
-  - Файлы: `src/Pivot3D.h`, `src/Pivot3D.cpp`.
+- [x] **2.2. Parent = `std::weak_ptr<Pivot3D>`.** Currently `_parent` is a `shared_ptr`, which creates a cycle and leaks the graph.
+  - Replace with: `std::weak_ptr<Pivot3D> _parent;`.
+  - Everywhere `_parent` is used: `auto p = _parent.lock(); if (p) ...`.
+  - Files: `src/Pivot3D.h`, `src/Pivot3D.cpp`.
 
-- [x] **2.3. Убрать `shared_from_this()` из `~Pivot3D`.** В деструкторе weak_ptr уже expired, будет `bad_weak_ptr` → `std::terminate`.
-  - Удалить блок «отвязки от родителя» в деструкторе (она и не нужна, если parent — weak_ptr и сам не держит уничтожаемого объекта).
-  - Файл: `src/Pivot3D.cpp`.
+- [x] **2.3. Remove `shared_from_this()` from `~Pivot3D`.** In the destructor the weak_ptr is already expired, so it would be `bad_weak_ptr` → `std::terminate`.
+  - Remove the "detach from parent" block in the destructor (it isn't needed if parent is a weak_ptr and doesn't itself hold the object being destroyed).
+  - File: `src/Pivot3D.cpp`.
 
-- [x] **2.4. Иерархия трансформов.** Дочерние узлы должны учитывать world-матрицу родителя.
-  - Вариант A (минимальный): в `Pivot3D::render` принимать `const glm::mat4& parentWorld = glm::mat4(1.0f)`, считать `_world = parentWorld * local`, передавать детям.
-  - Вариант B (правильный): пробрасывать `RenderContext& ctx` — см. 3.1.
-  - Файлы: `src/Pivot3D.h/.cpp`, `src/Scene3D.cpp`, `src/Mesh.cpp`, `src/ExternalModel.cpp`, `src/Model.cpp`.
-  - Проверка: вложенный куб (`scene.addChild(parent); parent->addChild(child); child.setPosition(...)`) рендерится со сложением координат.
+- [x] **2.4. Transform hierarchy.** Child nodes must account for the parent's world matrix.
+  - Option A (minimal): in `Pivot3D::render` accept `const glm::mat4& parentWorld = glm::mat4(1.0f)`, compute `_world = parentWorld * local`, pass it to children.
+  - Option B (proper): pass `RenderContext& ctx` through — see 3.1.
+  - Files: `src/Pivot3D.h/.cpp`, `src/Scene3D.cpp`, `src/Mesh.cpp`, `src/ExternalModel.cpp`, `src/Model.cpp`.
+  - Check: a nested cube (`scene.addChild(parent); parent->addChild(child); child.setPosition(...)`) renders with the coordinates summed.
 
-- [x] **2.5. Удалять GL-ресурсы в деструкторах.**
+- [x] **2.5. Delete GL resources in destructors.**
   - `Mesh::~Mesh`: `glDeleteVertexArrays(1, &vertexAttributesArray); glDeleteBuffers(...)`.
-  - `Shader::~Shader`: `glDeleteProgram(Program)` (с защитой `if (Program != 0)`).
-  - Запретить копирование `Shader` (или сделать move-only), чтобы не было двойного `glDeleteProgram` той же программы.
-  - Файлы: `src/Mesh.cpp`, `src/Shader.h/.cpp`.
+  - `Shader::~Shader`: `glDeleteProgram(Program)` (guarded with `if (Program != 0)`).
+  - Forbid copying `Shader` (or make it move-only) so there's no double `glDeleteProgram` on the same program.
+  - Files: `src/Mesh.cpp`, `src/Shader.h/.cpp`.
 
-- [x] **2.6. `removeListener` в инпутах.** Сейчас при уничтожении объекта‑слушателя его указатель остаётся в static-векторе → dangling pointer.
-  - Добавить в `MouseInput`/`KeyboardInput`/`UpdateBroadcaster` метод `removeListener` и вызывать его из деструкторов `FreeLookCamera`, `FirstPersonCamera`, `ObjectSelector`.
-  - Файлы: `src/input/MouseInput.*`, `src/input/KeyboardInput.*`, `src/UpdateBroadcaster.*`, `src/camera/*`, `src/object_selector/ObjectSelector.*`.
+- [x] **2.6. `removeListener` in the inputs.** Currently when a listener object is destroyed its pointer stays in the static vector → dangling pointer.
+  - Add a `removeListener` method to `MouseInput`/`KeyboardInput`/`UpdateBroadcaster` and call it from the destructors of `FreeLookCamera`, `FirstPersonCamera`, `ObjectSelector`.
+  - Files: `src/input/MouseInput.*`, `src/input/KeyboardInput.*`, `src/UpdateBroadcaster.*`, `src/camera/*`, `src/object_selector/ObjectSelector.*`.
 
 ---
 
-## Этап 3. Архитектура (Device3D → RenderContext, материалы)
+## Stage 3. Architecture (Device3D → RenderContext, materials)
 
-Цель: убрать глобальное состояние и хрупкие зависимости через статику.
+Goal: remove global state and fragile dependencies through statics.
 
-- [x] **3.1. Ввести `RenderContext`.**
+- [x] **3.1. Introduce `RenderContext`.**
   ```cpp
   struct RenderContext {
       glm::mat4 view;
       glm::mat4 projection;
-      glm::mat4 model;            // текущая world-матрица узла
+      glm::mat4 model;            // the node's current world matrix
       Camera*   camera   = nullptr;
       Scene3D*  scene    = nullptr;
       const Pivot3D* currentObject = nullptr;
   };
   ```
-  - Передавать `const RenderContext&` (или `&`) в `Pivot3D::render(ctx, material)` и `MaterialBase::bind(ctx, mesh)`.
-  - Файл: новый `src/render/RenderContext.h`.
+  - Pass `const RenderContext&` (or `&`) into `Pivot3D::render(ctx, material)` and `MaterialBase::bind(ctx, mesh)`.
+  - File: new `src/render/RenderContext.h`.
 
-- [x] **3.2. Убрать `Device3D`.** После 3.1 этот класс не нужен; вместо него — `RenderContext`, который владеется сценой и расходуется фрейм.
-  - Удалить `src/Device3D.h/.cpp`, поправить все `Device3D::view/projection/...` → `ctx.view/...`.
+- [x] **3.2. Remove `Device3D`.** After 3.1 this class is no longer needed; in its place is `RenderContext`, which is owned by the scene and consumed per frame.
+  - Delete `src/Device3D.h/.cpp`, fix all `Device3D::view/projection/...` → `ctx.view/...`.
 
-- [x] **3.3. Материал владеет собственным шейдером.**
-  - `ShaderFactory` хранит исходники + GLuint скомпилированных шейдеров (vs/fs), но **не** готовые программы.
-  - Каждый материал собирает собственный `Program` (линкует свою комбинацию vs + fs + filters). Это избавляет от взаимной поломки шейдеров в `Material3D::build` (см. п. 11 ревью).
-  - Альтернатива: ключ кэша программ — кортеж (vs‑источник + fs‑источник **после** применения фильтров).
-  - Файлы: `src/materials/ShaderFactory.*`, `src/Material3D.cpp`.
+- [x] **3.3. The material owns its own shader.**
+  - `ShaderFactory` stores sources + the GLuint of compiled shaders (vs/fs), but **not** finished programs.
+  - Each material assembles its own `Program` (links its combination of vs + fs + filters). This avoids mutual shader breakage in `Material3D::build` (see review item 11).
+  - Alternative: the program cache key is a tuple (vs source + fs source **after** filters are applied).
+  - Files: `src/materials/ShaderFactory.*`, `src/Material3D.cpp`.
 
-- [x] **3.4. Кэшировать `glGetUniformLocation`.** Сейчас в `bind()` локации запрашиваются на каждый draw call.
-  - В `MaterialBase` завести `std::unordered_map<std::string, GLint> _uniformLocations` и lazy-кэш.
-  - Файлы: `src/materials/MaterialBase.*`, `src/Material3D.cpp`, `src/materials/ColorMaterial.cpp`, `src/materials/ObjectIdMaterial.cpp`, `src/materials/SkinnedMaterial3D.cpp`.
+- [x] **3.4. Cache `glGetUniformLocation`.** Currently `bind()` queries locations on every draw call.
+  - In `MaterialBase` add `std::unordered_map<std::string, GLint> _uniformLocations` and a lazy cache.
+  - Files: `src/materials/MaterialBase.*`, `src/Material3D.cpp`, `src/materials/ColorMaterial.cpp`, `src/materials/ObjectIdMaterial.cpp`, `src/materials/SkinnedMaterial3D.cpp`.
 
-- [x] **3.5. Базовый блок uniforms вынести в `MaterialBase::bindStandardUniforms(ctx)`.** Сейчас `Material3D::bind` и `ColorMaterial::bind` дублируют один и тот же код (view/projection/model/light).
-  - Файлы: `src/materials/MaterialBase.*`, `src/Material3D.cpp`, `src/materials/ColorMaterial.cpp`.
+- [x] **3.5. Move the base uniform block into `MaterialBase::bindStandardUniforms(ctx)`.** Currently `Material3D::bind` and `ColorMaterial::bind` duplicate the same code (view/projection/model/light).
+  - Files: `src/materials/MaterialBase.*`, `src/Material3D.cpp`, `src/materials/ColorMaterial.cpp`.
 
-- [x] **3.6. Симметрия `bind`/`unbind` для GL-state.** `CullFace` должен быть сброшен в `unbind` (или, лучше, выставлен заново при каждом `bind` — без зависимости от прошлого состояния).
-  - Файл: `src/materials/MaterialBase.cpp`.
-
----
-
-## Этап 4. Стабильность и оконные события
-
-- [x] **4.1. Обрабатывать resize окна.** `glfwSetFramebufferSizeCallback` → обновлять `Device3D::sceenWidth/Height` (или поле `Scene::viewport`) и вызывать `glViewport`, пересобирать `projection` у камеры.
-  - Файл: `main.cpp`.
-
-- [x] **4.2. Исправить опечатку `sceenWidth` → `screenWidth`.** Если ещё не уберём `Device3D` полностью.
-
-- [ ] **4.3. Использовать пути относительно exe.** `"../assets/..."` ломается при запуске из IDE-папки или инсталла.
-  - Через `std::filesystem` определить путь рядом с `argv[0]`, относительно него грузить `assets/`.
-  - Файлы: `main.cpp`, `src/materials/ShaderFactory.cpp`, `src/utils/FileUtils.cpp`.
-
-- [x] **4.4. Бросать `std::exception`, а не `const char*`.** Заменить `throw "..."` на `throw std::invalid_argument(...)` / `std::runtime_error(...)`.
-  - Файлы: `src/Pivot3D.cpp`, `src/materials/ShaderFactory.cpp`.
+- [x] **3.6. Symmetry of `bind`/`unbind` for GL state.** `CullFace` should be reset in `unbind` (or, better, set anew on each `bind` — without depending on previous state).
+  - File: `src/materials/MaterialBase.cpp`.
 
 ---
 
-## Этап 5. Чистка стиля и API
+## Stage 4. Stability and window events
 
-- [x] **5.1. Убрать `using namespace std;` из `src/Mesh.h`.** Расставить `std::` явно во всех зависимых файлах.
+- [x] **4.1. Handle window resize.** `glfwSetFramebufferSizeCallback` → update `Device3D::sceenWidth/Height` (or the `Scene::viewport` field) and call `glViewport`, rebuild the camera's `projection`.
+  - File: `main.cpp`.
 
-- [x] **5.2. Убрать антипаттерн `make_shared<T>(T(...))`.** Заменить на `make_shared<T>(args...)`. Особенно важно для `Mesh` (избегаем копирования `vector<Vertex>`).
-  - Файлы: повсеместно, см. `Material3D::clone`, `BoxModel::processMesh`, `ExternalModel::processMesh`, `Scene3D::Scene3D`, `ObjectSelector::ObjectSelector` и др.
+- [x] **4.2. Fix the typo `sceenWidth` → `screenWidth`.** If we don't remove `Device3D` entirely.
 
-- [x] **5.3. `std::string` → `std::string_view`** в сигнатурах геттеров/сеттеров и аргументах кэшей (`TextureManager`, `EventDispatcher`, `ShaderFactory`).
+- [ ] **4.3. Use paths relative to the exe.** `"../assets/..."` breaks when launched from the IDE folder or an install.
+  - Via `std::filesystem` determine the path next to `argv[0]`, and load `assets/` relative to it.
+  - Files: `main.cpp`, `src/materials/ShaderFactory.cpp`, `src/utils/FileUtils.cpp`.
 
-- [x] **5.4. `Mesh` владеет своими ресурсами, а не «голыми» `GLuint`.** Завести `class GLBuffer` / `class GLVertexArray` RAII-обёртки (или `std::unique_ptr` с кастомным deleter’ом).
-
-- [x] **5.5. Унифицировать математику на GLM.** Удалить `Vector3f`/`Vector4f`/`Matrix4f`/`Quaternion` из `Math3d.h`, перевести скиннинг на `glm::mat4`/`glm::quat`. Помощник для конвертации `aiMatrix4x4 → glm::mat4`.
-  - Файлы: `src/utils/Math3d.*`, `src/ExternalModel.cpp`, `src/materials/SkinnedMaterial3D.cpp`.
-
-- [ ] **5.6. Унифицировать именование.** Договориться: приватные поля — `_camelCase`, методы — `camelCase`, классы — `PascalCase`, константы — `kUpperCamel` или `UPPER_SNAKE`. Камеру (Position/Yaw/Pitch) привести к проектному стилю.
-
-- [x] **5.7. Перенести GLFW-адаптеры.** `GLFWKeyboardInput.*` и `GLFWMouseInput.*` из корня проекта в `src/platform/glfw/`.
-
-- [x] **5.8. `Pivot3D::translate`/`scale` пустые.** Либо реализовать (накопительный сдвиг/масштаб), либо удалить.
-
-- [x] **5.9. Расширяемый `Vertex`.** Описать `VertexAttribute`/`VertexLayout`, чтобы материал/меш могли работать с разными форматами вершин (для будущего PBR — добавить tangent/uv2/color).
+- [x] **4.4. Throw `std::exception`, not `const char*`.** Replace `throw "..."` with `throw std::invalid_argument(...)` / `std::runtime_error(...)`.
+  - Files: `src/Pivot3D.cpp`, `src/materials/ShaderFactory.cpp`.
 
 ---
 
-## Этап 6. Опционально / задел на будущее
+## Stage 5. Style and API cleanup
 
-- [ ] **6.1. Object picking через FBO, а не пере-рендеринг сцены.** Сейчас `ObjectSelector::pickObject` рендерит сцену в дефолтный backbuffer, что приводит к мерцанию.
-- [ ] **6.2. Uniform Buffer Object для view/projection/light.** Один UBO на сцену, все материалы биндят, отпадают повторные `glUniform*`.
-- [ ] **6.3. Логирование (spdlog/собственное).** Вместо `std::cout` в шейдерах/SOIL — структурированные сообщения с уровнями.
-- [ ] **6.4. Тесты.** Хотя бы юнит-тесты на `Pivot3D` (иерархия, поиск по id), `EventDispatcher`, `Math3d` (если оставится).
-- [ ] **6.5. CI.** GitHub Actions на Windows-MSVC с vcpkg, сборка + smoke-запуск.
+- [x] **5.1. Remove `using namespace std;` from `src/Mesh.h`.** Spell out `std::` explicitly in all dependent files.
+
+- [x] **5.2. Remove the `make_shared<T>(T(...))` anti-pattern.** Replace with `make_shared<T>(args...)`. Especially important for `Mesh` (avoids copying `vector<Vertex>`).
+  - Files: throughout, see `Material3D::clone`, `BoxModel::processMesh`, `ExternalModel::processMesh`, `Scene3D::Scene3D`, `ObjectSelector::ObjectSelector`, etc.
+
+- [x] **5.3. `std::string` → `std::string_view`** in getter/setter signatures and cache arguments (`TextureManager`, `EventDispatcher`, `ShaderFactory`).
+
+- [x] **5.4. `Mesh` owns its resources, not "raw" `GLuint`s.** Introduce `class GLBuffer` / `class GLVertexArray` RAII wrappers (or `std::unique_ptr` with a custom deleter).
+
+- [x] **5.5. Unify the math on GLM.** Remove `Vector3f`/`Vector4f`/`Matrix4f`/`Quaternion` from `Math3d.h`, port skinning to `glm::mat4`/`glm::quat`. Add a helper for converting `aiMatrix4x4 → glm::mat4`.
+  - Files: `src/utils/Math3d.*`, `src/ExternalModel.cpp`, `src/materials/SkinnedMaterial3D.cpp`.
+
+- [ ] **5.6. Unify naming.** Agree on: private fields — `_camelCase`, methods — `camelCase`, classes — `PascalCase`, constants — `kUpperCamel` or `UPPER_SNAKE`. Bring the camera (Position/Yaw/Pitch) in line with the project style.
+
+- [x] **5.7. Move the GLFW adapters.** `GLFWKeyboardInput.*` and `GLFWMouseInput.*` from the project root into `src/platform/glfw/`.
+
+- [x] **5.8. `Pivot3D::translate`/`scale` are empty.** Either implement them (cumulative translate/scale), or remove them.
+
+- [x] **5.9. Extensible `Vertex`.** Describe `VertexAttribute`/`VertexLayout` so the material/mesh can work with different vertex formats (for future PBR — add tangent/uv2/color).
 
 ---
 
-## Чек-лист «движок работает корректно»
+## Stage 6. Optional / future groundwork
 
-После завершения этапа 1+2:
-- [ ] Куб виден на экране и не вырожден.
-- [ ] Иерархия трансформов: дочерний объект сдвигается вместе с родителем.
-- [ ] nanosuit грузится и рисуется без крэша.
-- [ ] Камера управляется мышью без срабатывания «правой кнопки» при клике колесом.
-- [ ] Закрытие окна не оставляет повторных delete/`glDelete*`-предупреждений в выводе.
-- [ ] При ресайзе окна картинка не растягивается.
+- [ ] **6.1. Object picking via FBO instead of re-rendering the scene.** Currently `ObjectSelector::pickObject` renders the scene into the default backbuffer, which causes flickering.
+- [ ] **6.2. Uniform Buffer Object for view/projection/light.** One UBO per scene, all materials bind it, the repeated `glUniform*` calls go away.
+- [ ] **6.3. Logging (spdlog/custom).** Instead of `std::cout` in shaders/SOIL — structured messages with levels.
+- [ ] **6.4. Tests.** At least unit tests for `Pivot3D` (hierarchy, lookup by id), `EventDispatcher`, `Math3d` (if it stays).
+- [ ] **6.5. CI.** GitHub Actions on Windows-MSVC with vcpkg, build + smoke run.
+
+---
+
+## "Engine works correctly" checklist
+
+After completing stages 1+2:
+- [ ] The cube is visible on screen and not degenerate.
+- [ ] Transform hierarchy: a child object moves together with its parent.
+- [ ] nanosuit loads and renders without a crash.
+- [ ] The camera is controlled by the mouse without triggering the "right button" when clicking the wheel.
+- [ ] Closing the window leaves no repeated delete/`glDelete*` warnings in the output.
+- [ ] When the window is resized the image isn't stretched.
