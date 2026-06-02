@@ -4,6 +4,7 @@ A small, modern C++ 3D rendering engine built on **OpenGL 3.3 Core**. It is a
 learning-oriented but feature-rich renderer with physically based rendering
 (PBR), image-based lighting (IBL), shadow mapping, a skybox, and a composable
 material system with pluggable lighting models.
+<img width="802" height="604" alt="image" src="https://github.com/user-attachments/assets/02893c81-22b0-4bc9-9741-4b71277d1d7e" />
 
 ## Features
 
