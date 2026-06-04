@@ -35,6 +35,8 @@ protected:
     std::string _fragmentShaderPath;
     CullFaceMode _cullFace;
     UniformsLocationCache _uniformCache;
+    std::string _compiledVertexSource;
+    std::string _compiledFragmentSource;
 public:
     MaterialBase(const std::string &vertexShaderPath, const std::string &fragmentShaderPath);
 	virtual ~MaterialBase() = default;
@@ -52,10 +54,21 @@ public:
 
     void SetCullFace(const CullFaceMode& cullFace) { _cullFace = cullFace; }
     CullFaceMode GetCullFace() const { return _cullFace; }
+
+    const std::string& GetVertexShaderPath() const { return _vertexShaderPath; }
+    const std::string& GetFragmentShaderPath() const { return _fragmentShaderPath; }
+
+    // Финальный (сгенерированный) код шейдеров — доступен после Build/BuildFromSources.
+    const std::string& GetCompiledVertexSource() const { return _compiledVertexSource; }
+    const std::string& GetCompiledFragmentSource() const { return _compiledFragmentSource; }
+
     static void ClearProgramCache();
 protected:
     virtual const ShaderFactory::CompiledShader& BuildVertexShader() const;
     virtual const ShaderFactory::CompiledShader& BuildFragmentShader() const;
+
+    // Компиляция готового кода без кодогенерации (compiled-путь, 8.5b).
+    void BuildFromSources(const std::string& vertexSource, const std::string& fragmentSource);
 
     static size_t HashSources(const std::string &vertexSource, const std::string &fragmentSource);
     static GLuint LinkProgram(GLuint vShader, GLuint fShader);

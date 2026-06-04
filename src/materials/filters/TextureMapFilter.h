@@ -12,6 +12,8 @@ public:
     explicit TextureMapFilter(const std::shared_ptr<Texture2D>& texture);
     ~TextureMapFilter() override = default;
 
+    std::string GetTypeName() const override { return "TextureMap"; }
+
 protected:
     const std::string& GetBaseFilterCode() const override {
         return _filterCode;

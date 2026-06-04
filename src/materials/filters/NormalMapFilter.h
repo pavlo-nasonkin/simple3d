@@ -12,6 +12,8 @@ public:
     explicit NormalMapFilter(const std::shared_ptr<Texture2D>& texture);
     ~NormalMapFilter() override = default;
 
+    std::string GetTypeName() const override { return "NormalMap"; }
+
 protected:
     const std::string& GetBaseFilterCode() const override {
         return _filterCode;

@@ -13,11 +13,25 @@
 // Move-only (благодаря RAII-обёрткам GLBuffer/GLVertexArray).
 class Geometry
 {
+public:
+    // CPU-сторона вторичного буфера (хранится для сериализации в префаб).
+    struct SecondaryData {
+        VertexLayout layout;
+        std::vector<std::byte> data;
+    };
+
+private:
     GLVertexArray _vao;
     GLBuffer _vbo;
     GLBuffer _ebo;
     std::vector<GLBuffer> _secondaryVbos; // для skinning и пр.
     GLsizei _indicesCount = 0;
+
+    // CPU-копии данных (нужны для запекания геометрии в префаб без re-import).
+    VertexLayout _layout;
+    std::vector<std::byte> _vertexData;
+    std::vector<GLuint> _indices;
+    std::vector<SecondaryData> _secondaryData;
 
 public:
     Geometry(const VertexLayout& layout,
@@ -43,4 +57,10 @@ public:
 
     void Draw() const;
     GLsizei IndicesCount() const { return _indicesCount; }
+
+    // Доступ к CPU-данным для сериализации.
+    const VertexLayout& Layout() const { return _layout; }
+    const std::vector<std::byte>& VertexData() const { return _vertexData; }
+    const std::vector<GLuint>& Indices() const { return _indices; }
+    const std::vector<SecondaryData>& SecondaryBuffers() const { return _secondaryData; }
 };

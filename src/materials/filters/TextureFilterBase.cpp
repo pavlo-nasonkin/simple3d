@@ -2,11 +2,24 @@
 
 #include "resources/Texture2D.h"
 #include "utils/StringUtils.h"
+#include "FilterData.h"
 
 TextureFilterBase::TextureFilterBase(const std::shared_ptr<Texture2D>& texture):
     _texture(texture)
 {
 
+}
+
+FilterData TextureFilterBase::Serialize() const
+{
+    FilterData data = Filter3D::Serialize();
+    if (_texture) {
+        // Полный путь (каталог + файл) — чтобы префаб был переносим и грузился без модели.
+        data.texturePath = _texture->directory.empty()
+            ? _texture->path
+            : _texture->directory + "/" + _texture->path;
+    }
+    return data;
 }
 
 void TextureFilterBase::Init() {

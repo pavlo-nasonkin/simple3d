@@ -81,6 +81,10 @@ simple3d/
 
 ```bash
 vcpkg install glfw3 assimp
+vcpkg install "imgui[docking-experimental,glfw-binding,opengl3-binding]:x64-windows"
+vcpkg install nativefiledialog-extended
+vcpkg install nlohmann-json
+vcpkg install imguizmo
 ```
 
 ### Configure & build

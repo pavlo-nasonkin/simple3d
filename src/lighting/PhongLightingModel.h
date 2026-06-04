@@ -15,6 +15,7 @@ public:
     const std::string& GetLightingCode() const override;
     void Bind(GLuint firstTextureUnit, const RenderContext& ctx) override;
     void OnProgramBuild(GLuint program) override;
+    std::string GetTypeName() const override { return "Phong"; }
 private:
     static const std::string _declarationsCode;
     static const std::string _lightingCode;

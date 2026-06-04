@@ -21,6 +21,8 @@ public:
     const std::shared_ptr<Texture2D>& GetTexture() const { return _texture; }
     void SetTexture(const std::shared_ptr<Texture2D>& texture) { _texture = texture; }
 
+    FilterData Serialize() const override; // + texturePath
+
 protected:
     std::shared_ptr<Texture2D> _texture;
     std::string _uniformName;

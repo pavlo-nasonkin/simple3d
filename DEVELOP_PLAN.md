@@ -701,7 +701,12 @@ top of the GL context. Dependencies — via vcpkg.
 
 ### Substages
 
-- [ ] **8.1. ImGui integration.** Hook up `imgui[docking-experimental,
+- [x] **8.1. ImGui integration.** **Сделано.** `EditorUI` (Init/BeginFrame/DrawDefaultUi/
+  EndFrame/Shutdown), docking-флаг, бэкенды glfw+opengl3. Init после установки наших
+  GLFW-колбэков (ImGui цепляется к ним). Гейт ввода: `MouseInput::SetMouseCaptured(io.WantCaptureMouse)`
+  в BeginFrame → события не идут камере/пикингу над панелями. В `main.cpp` камера
+  переключена на `FreeLookCamera` (FirstPerson прячет/центрирует курсор — несовместимо с UI).
+  Hook up `imgui[docking-experimental,
   glfw-binding,opengl3-binding]`. Init after `glewInit`, shutdown before
   `glfwTerminate`. In the main loop: `NewFrame` → build the UI → `Render` +
   `ImGui_ImplOpenGL3_RenderDrawData`. Enable docking + (optionally) viewports.
@@ -710,14 +715,26 @@ top of the GL context. Dependencies — via vcpkg.
     `io.WantCaptureMouse/Keyboard`, so that clicks on panels don't rotate the
     camera.
 
-- [ ] **8.2. Viewport as a panel (render-to-texture).** Render the scene into an
+- [x] **8.2. Viewport as a panel (render-to-texture).** **Сделано.** `Framebuffer`
+  (RGBA8 + depth24/stencil8, `Resize/Bind/Unbind`) + `ViewportPanel`: рендер сцены в FBO
+  и показ через `ImGui::Image` (V перевёрнут) в окне «Viewport»; размер FBO и аспект
+  камеры подстраиваются под панель. В `main.cpp` сцена больше не рисуется в default FB
+  (его только чистим под фон редактора). Resize-колбэк окна больше не трогает камеру.
+  - NB: пикинг (`ObjectSelector`) пока в координатах окна, а не панели — поправить в 8.3.
+  Render the scene into an
   offscreen FBO (color `GL_RGBA8` + depth), show it via `ImGui::Image` in a
   docked "Viewport" window. Resize the FBO to the panel size. The camera uses the
   viewport size, not the window size (fix `SetScreenWidth/Height`, and the center
   for the FPS camera).
   - Files: `src/render/Framebuffer.h/.cpp` (generalize the FBO), `src/editor/ViewportPanel`.
 
-- [ ] **8.3. Hierarchy panel + inspector.** A tree of `Scene3D` (traverse
+- [x] **8.3. Hierarchy panel + inspector.** **Done (base).** `HierarchyPanel` (tree of
+  `Scene3D`, selection synced with `ObjectSelector::SetSelectedObject`), `InspectorPanel`
+  (name, P/R/S, cast/receive shadows → written into `Pivot3D`). Picking fixed for the panel:
+  `ObjectSelector::PickAt(x,y,w,h)` renders the id-pass into its own panel-sized `Framebuffer`
+  and reads the pixel in panel-local coords; in editor mode window auto-pick is disabled
+  (`SetAutoPick(false)`), the viewport drives picking. Material/filter inspector is the
+  extension pending 8.5a. A tree of `Scene3D` (traverse
   `Children()`), node selection (synced with `ObjectSelector`). Inspector:
   position/rotation/scale, name, the `castShadows/receiveShadows` flags, material
   parameters (roughnessScale, baseColor). Edits are written straight into
@@ -729,18 +746,39 @@ top of the GL context. Dependencies — via vcpkg.
     "inspectable" (type + parameters available to the UI).
   - Files: `src/editor/HierarchyPanel`, `src/editor/InspectorPanel`.
 
-- [ ] **8.4. Model import.** An "Import" button → an NFD dialog (`.fbx/.obj/.gltf…`)
+- [x] **8.4. Model import.** **Done.** Верхнее меню `MenuBarPanel` (File/Edit/View/Import/Help);
+  Import → Model открывает NFD-диалог (`fbx,obj,gltf,glb,dae`) → `ExternalModel(path)` → в сцену
+  (путь нормализуется на `/` для assimp/резолвера текстур). Material/Animation/Texture в Import —
+  заглушки (disabled) на будущее. Меню рисуется до докспейса (учёт высоты в WorkSize). An "Import" button → an NFD dialog (`.fbx/.obj/.gltf…`)
   → `ExternalModel(path)` → adding to the scene. The texture resolver by the
   Megascans convention already works (Stage 3).
   - File: `src/editor/AssetBrowserPanel` (+ NFD).
 
-- [ ] **8.5. Prefab format (JSON).** A prefab = a serialized subtree of nodes:
-  a reference to the geometry source (model path / primitive type), the
-  **material** (see below), the local transform, child nodes, shadow flags.
-  - `Prefab::Save(path)` / `Prefab::Load(path)` → an instance of a `Pivot3D` subtree.
+- [x] **8.5. Prefab format (self-contained: `prefab.json` + `prefab.bin`).** **Done.**
+  `Prefab::Save/Load` (`src/scene/Prefab.*`, nlohmann/json + бинарь). Geometry хранит CPU-данные
+  (layout + vertex/index/secondary) → запекаются в `.bin`. Материалы: vsh/fsh/lighting/roughnessScale
+  + фильтры (через `FilterData`/`FilterFactory`, 8.5a). Текстуры — полным путём (Texture2D.directory).
+  UI: Import → Prefab (загрузка), Inspector → «Save as Prefab». Caveat: skinned-материалы пишутся как
+  Material3D (без bind костей на загрузке); CPU-копия геометрии держится в RAM (можно освобождать в игре).
+  Префаб **самодостаточен** — не зависит от исходного FBX и assimp при загрузке.
+  - `prefab.json`: дерево узлов `{ name, transform(PRS), nodeMatrix, geometryRef,
+    materialRef, castShadows, receiveShadows, children[] }` + список geometries
+    (id, layout, оффсеты блобов в .bin, индексы, secondary/bones) + список materials.
+  - `prefab.bin`: **запечённые бинарные VBO/EBO** (и bone-буферы). `Geometry` уже
+    умеет конструироваться из `std::span<std::byte>` — грузим напрямую без re-import.
+  - **Модификации импорта запекаются в данные** (flip UV → уже в вершинах,
+    pre-transform → в `nodeMatrix`). Префаб НЕ хранит флаги импорта.
+  - Геометрия шарится через `GeometryRegistry` (ключ `prefabId#geometryId`).
+  - `Prefab::Save(path)` / `Prefab::Load(path)` → инстанс поддерева `Pivot3D`.
   - Files: `src/scene/Prefab.h/.cpp`, `src/scene/Serialization.h/.cpp`.
 
-- [ ] **8.5a. Material serialization (by fields and filters).** The material is
+- [x] **8.5a. Self-describing filters + FilterFactory.** **Done.** `Filter3D::GetTypeName()`
+  (pure) + `Serialize() → FilterData` (нейтральный дескриптор: type/slot/blend + texturePath/color),
+  переопределены в `TextureFilterBase` (texturePath) и `ColorFilter` (color); `TextureMap/NormalMap`
+  дают `type`. `FilterFactory::Create(FilterData, textureDir)` восстанавливает фильтр (текстуры через
+  `TextureManager`). JSON-конвертация `FilterData` — в слое сериализации (8.5). NB: каталог текстур
+  (`textureDir`) пробрасывается материалом/префабом — финализируется в 8.5.
+  Material serialization (by fields and filters). The material is
   saved **not by reference**, but by its own structure, so it can be assembled/
   edited by hand (the future material inspector, item 8.3):
   - material fields: lighting model (`Phong`/`PBR`/`Unlit`), `roughnessScale`,
@@ -758,8 +796,42 @@ top of the GL context. Dependencies — via vcpkg.
     the `Serialize`/`type` methods in `Filter3D` and its subclasses.
   - This is direct groundwork for the **material inspector**: adding/removing
     filters, changing slot/blend, picking a texture — the same fields as in JSON.
+  - **Фильтры — единый источник истины для биндинга** (и в редакторе, и в игре).
+    Реконструкция детерминирована (тот же порядок `AddFilter` → те же uniform-id),
+    поэтому совпадает с закэшированным кодом из 8.5b.
 
-- [ ] **8.6. Scene format (save/load).** A scene = a list of prefab instances
+- [x] **8.5b. Compiled-материал и два пути загрузки.** **Done.** `MaterialBase` запоминает
+  финальный код в `Build()` (`GetCompiledVertex/FragmentSource`) + `BuildFromSources` (компиляция
+  без инъекции). `Material3D::BuildCompiled` (+ `OnProgramBuild` lighting), `ShaderGenVersion()`.
+  Префаб пишет `compiled{vertex,fragment}` + `genVersion`; на загрузке при совпадении версии идёт
+  compiled-путь (фильтры всё равно добавляются для биндинга, кодогенерация пропускается), иначе —
+  регенерация из фильтров. Материал хранит и
+  редактируемую форму (filters, 8.5a), и **запечённый финальный код**, чтобы игра
+  не запускала кодогенерацию.
+  - `MaterialAsset`: `lightingModel`, `params` (roughnessScale/baseColor/cullFace…),
+    `filters[]`, `compiled { vertexShader, fragmentShader }`, `genVersion`.
+  - **Authoring (редактор):** реконструирует `Material3D` из `filters`; при правке
+    фильтров `Build()` → `InjectFilters` → новый `compiled`. `genVersion` = текущая
+    версия кодогенератора.
+  - **Compiled (игра):** компилирует `compiled.vsh/fsh` **без** `InjectFilters`;
+    **фильтры всё равно реконструируются** (выбран этот путь) — их `Bind()` биндит
+    текстуры, но кодогенерация пропускается. Совпадение uniform-id с кэшем гарантирует
+    детерминированная реконструкция (см. 8.5a).
+  - **`ILightingModel` нужен в обоих режимах** — его `Bind()` ставит свет/IBL/shadow
+    (это код, не данные). По `lightingModel`-типу инстанцируется нужный класс.
+  - **Версионирование:** при `genVersion` ≠ текущей редактор перегенерирует `compiled`
+    из `filters`; игра логирует/падает на чужой версии. Поэтому в ассете нужны **и**
+    `filters`, **и** `compiled`.
+  - Files: `src/materials/MaterialAsset.*`, `Material3D::FromFilters/FromCompiled`,
+    `MaterialBase` program-cache по хэшу переиспользует одинаковые `compiled`-шейдеры.
+
+- [x] **8.6. Scene format (save/load).** **Done.** Общая сериализация вынесена в `SceneIO`
+  (`scene/Serialization.*`), переиспользуется `Prefab` и `SceneSerializer`. `SceneSerializer::Save/Load`
+  (`<base>.json`+`.bin`): узлы сцены (запечённая геометрия + материалы с compiled/genVersion) +
+  окружение (dirLight, ambient, shadow radius/strength, HDR-путь) + камера (pos/yaw/pitch).
+  `Scene3D::SetEnvironmentFromHdr` (load+bake+skybox, помнит путь). File-меню: New/Open Scene/Save Scene As.
+  NB: первая версия **встраивает** контент (а не ссылается на префабы) — нормализация в инстансы префабов позже.
+  A scene = a list of prefab instances
   (a reference to the prefab + world transform + overrides), plus environment
   parameters: directional light (dir/color/intensity), ambient, the HDR
   environment (path to the `.hdr`), shadow parameters (radius/strength), the
@@ -767,12 +839,18 @@ top of the GL context. Dependencies — via vcpkg.
   - `Scene3D::Save(path)` / `Scene3D::Load(path)`.
   - Files: `src/scene/SceneSerializer.h/.cpp`, edits to `Scene3D`.
 
-- [ ] **8.7. Load a scene at startup.** A command-line argument or the "last
+- [x] **8.7. Load a scene at startup.** **Done.** `main(argc,argv)`: путь сцены из аргумента
+  или `EditorConfig` («последняя сцена», `editor_config.json`); если загрузилась — хардкод-демо
+  пропускается (иначе строится демо-сцена). File-меню New/Open/Save As (8.6) обновляет last-scene в конфиге.
+  A command-line argument or the "last
   scene" from a config; if specified — load it instead of the hardcode in
   `main.cpp`. A `File → New/Open/Save/Save As` menu.
 
-- [ ] **8.8. Transform gizmo (optional).** `ImGuizmo` (translate/rotate/scale)
-  in the viewport over the selected node. Convenient, but not a blocker for the MVP.
+- [x] **8.8. Transform gizmo.** **Done.** `ImGuizmo` во вьюпорте над выбранным узлом:
+  `ImGuizmo::BeginFrame()` в `EditorUI::BeginFrame`, манипулятор в `ViewportPanel` (SetRect под
+  изображение, Recompose/Decompose ↔ Pivot3D PRS). Переключение W/E/R = translate/rotate/scale.
+  Пикинг ЛКМ пропускается при наведении/использовании гизмо (`IsOver/IsUsing`).
+  NB: оперирует локальным TRS узла (корректно для верхнеуровневых; вложенные/`nodeMatrix` — приближённо).
 
 ### Notes / decisions
 - **Widgets don't drive the scene directly through globals.** The editor works

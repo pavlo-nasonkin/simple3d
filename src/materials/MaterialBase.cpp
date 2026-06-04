@@ -39,6 +39,10 @@ void MaterialBase::Build()
     const auto& vsObject = BuildVertexShader();
     const auto& fsObject = BuildFragmentShader();
 
+    // Запоминаем финальный (сгенерированный) исходник — для запекания в префаб (8.5b).
+    _compiledVertexSource = vsObject.source;
+    _compiledFragmentSource = fsObject.source;
+
     // (опц.) Кэш программ по хешу финальных исходников
     const auto key = HashSources(vsObject.source, fsObject.source);
     if (auto it = _programCache.find(key); it != _programCache.end()) {
@@ -55,6 +59,26 @@ void MaterialBase::Build()
     _programCache.emplace(key, _shader);
 
     std::cout << "Built shader with filters. Vertex shader:\n" << vsObject.source << "\nFragment shader:\n" << fsObject.source << std::endl;
+}
+
+void MaterialBase::BuildFromSources(const std::string& vertexSource, const std::string& fragmentSource)
+{
+    // Прямая компиляция готового кода БЕЗ инъекции фильтров/лайтинга (compiled-путь).
+    const auto& vsObject = ShaderFactory::GetCompiledShaderFromSource(GL_VERTEX_SHADER, vertexSource);
+    const auto& fsObject = ShaderFactory::GetCompiledShaderFromSource(GL_FRAGMENT_SHADER, fragmentSource);
+
+    _compiledVertexSource = vertexSource;
+    _compiledFragmentSource = fragmentSource;
+
+    const auto key = HashSources(vertexSource, fragmentSource);
+    if (auto it = _programCache.find(key); it != _programCache.end()) {
+        _shader = it->second;
+    } else {
+        GLuint program = LinkProgram(vsObject.id, fsObject.id);
+        _shader = std::make_shared<Shader>(program);
+        _programCache.emplace(key, _shader);
+    }
+    _uniformCache.Reset(_shader->GetProgram());
 }
 
 GLuint MaterialBase::LinkProgram(GLuint vShader, GLuint fShader) {

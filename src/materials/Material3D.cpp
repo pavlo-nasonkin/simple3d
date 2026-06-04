@@ -26,8 +26,20 @@ const Material3D::FiltersList& Material3D::GetFilters() const
     return _filters;
 }
 
+std::string Material3D::GetLightingTypeName() const
+{
+    return _lighting ? _lighting->GetTypeName() : std::string("Unlit");
+}
+
 void Material3D::Build() {
 	MaterialBase::Build();
+	if (_lighting) {
+		_lighting->OnProgramBuild(_shader->GetProgram());
+	}
+}
+
+void Material3D::BuildCompiled(const std::string& vertexSource, const std::string& fragmentSource) {
+	BuildFromSources(vertexSource, fragmentSource);
 	if (_lighting) {
 		_lighting->OnProgramBuild(_shader->GetProgram());
 	}

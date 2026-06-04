@@ -45,6 +45,9 @@ set(SOURCE_FILES
         src/materials/SkinnedMaterial3D.h
         src/materials/filters/Filter3d.h
         src/materials/filters/Filter3d.cpp
+        src/materials/filters/FilterData.h
+        src/materials/filters/FilterFactory.h
+        src/materials/filters/FilterFactory.cpp
         src/materials/filters/ColorFilter.h
         src/materials/filters/ColorFilter.cpp
         src/materials/filters/NormalMapFilter.cpp
@@ -60,6 +63,12 @@ set(SOURCE_FILES
         src/render/Geometry.cpp
         src/render/Geometry.h
         src/render/GeometryRegistry.h
+        src/scene/Prefab.cpp
+        src/scene/Prefab.h
+        src/scene/Serialization.cpp
+        src/scene/Serialization.h
+        src/scene/SceneSerializer.cpp
+        src/scene/SceneSerializer.h
         src/render/Skybox.cpp
         src/render/Skybox.h
         src/render/IBLBaker.cpp
@@ -89,8 +98,34 @@ set(SOURCE_FILES
         src/models/BoxModel.h
         src/models/PlaneModel.cpp
         src/models/PlaneModel.h
+        src/models/PrimitiveModel.cpp
+        src/models/PrimitiveModel.h
+        src/models/SphereModel.cpp
+        src/models/SphereModel.h
+        src/models/CylinderModel.cpp
+        src/models/CylinderModel.h
+        src/models/ConeModel.cpp
+        src/models/ConeModel.h
+        src/models/TorusModel.cpp
+        src/models/TorusModel.h
         src/Engine.cpp
         src/Engine.h
+        src/editor/EditorUI.cpp
+        src/editor/EditorUI.h
+        src/editor/ViewportPanel.cpp
+        src/editor/ViewportPanel.h
+        src/editor/HierarchyPanel.cpp
+        src/editor/HierarchyPanel.h
+        src/editor/InspectorPanel.cpp
+        src/editor/InspectorPanel.h
+        src/editor/MaterialsInspectorPanel.cpp
+        src/editor/MaterialsInspectorPanel.h
+        src/editor/MenuBarPanel.cpp
+        src/editor/MenuBarPanel.h
+        src/editor/EditorConfig.cpp
+        src/editor/EditorConfig.h
+        src/render/Framebuffer.cpp
+        src/render/Framebuffer.h
         src/models/ExternalModel.cpp
         src/models/ExternalModel.h
         src/GLUtils.cpp
@@ -137,6 +172,22 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 
+# Dear ImGui (docking) с бэкендами glfw + opengl3, из vcpkg:
+#   vcpkg install "imgui[docking-experimental,glfw-binding,opengl3-binding]"
+find_package(imgui CONFIG REQUIRED)
+
+# Нативные файловые диалоги (импорт моделей и т.п.):
+#   vcpkg install nativefiledialog-extended
+find_package(nfd CONFIG REQUIRED)
+
+# JSON для сериализации префабов/сцены:
+#   vcpkg install nlohmann-json
+find_package(nlohmann_json CONFIG REQUIRED)
+
+# ImGuizmo — манипуляторы трансформа во вьюпорте:
+#   vcpkg install imguizmo
+find_package(imguizmo CONFIG REQUIRED)
+
 # SOIL2 lives in libs/SOIL/ and is resolved by cmakeModules/FindSOIL.cmake.
 find_package(SOIL REQUIRED)
 
@@ -145,6 +196,10 @@ find_package(SOIL REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE
         glfw
         assimp::assimp
+        imgui::imgui
+        imguizmo::imguizmo
+        nfd::nfd
+        nlohmann_json::nlohmann_json
         ${SOIL2_LIBRARY}
         ${OPENGL_gl_LIBRARY})
 

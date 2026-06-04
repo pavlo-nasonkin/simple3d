@@ -48,6 +48,9 @@ public:
 	float GetScreenHeight() const { return _screenHeight; }
 	void SetScreenHeight(float val) { _screenHeight = val; }
 
+	// Задать ориентацию по углам Эйлера и пересчитать векторы (для загрузки сцены).
+	void SetOrientation(float yaw, float pitch) { Yaw = yaw; Pitch = pitch; updateCameraVectors(); }
+
 protected:
 	// Calculates the front vector from the Camera's (updated) Euler Angles
 	void updateCameraVectors();

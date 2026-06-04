@@ -27,6 +27,7 @@ std::shared_ptr<Texture2D> TextureManager::getTexture(std::string_view texturePa
     texture->id = TextureFromFile(texturePath, directory);
 	texture->type = typeName;
 	texture->path = texturePath;
+	texture->directory = directory;
 	auto [inserted, _] = _textures.emplace(std::string(texturePath), std::move(texture));
 	return inserted->second;
 }
@@ -34,9 +35,14 @@ std::shared_ptr<Texture2D> TextureManager::getTexture(std::string_view texturePa
 GLuint TextureManager::TextureFromFile(std::string_view filename, std::string_view directory) {
 	//Generate texture ID and load texture data 
 	std::string fullname;
-	fullname.reserve(directory.size() + 1 + filename.size());
-	fullname.append(directory).push_back('/');
-	fullname.append(filename);
+	if (directory.empty()) {
+		// Пустой каталог → filename уже полный путь (напр. при загрузке префаба).
+		fullname.assign(filename);
+	} else {
+		fullname.reserve(directory.size() + 1 + filename.size());
+		fullname.append(directory).push_back('/');
+		fullname.append(filename);
+	}
 
 	// SOIL_FLAG_TEXTURE_REPEATS -> GL_REPEAT wrapping. Without it SOIL defaults to
 	// GL_CLAMP_TO_EDGE, which breaks mirrored/tiled UV layouts (e.g. nanosuit): the

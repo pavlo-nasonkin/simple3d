@@ -22,8 +22,17 @@ public:
 	void Bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
 	void Unbind() override;
     void AddFilter(const std::shared_ptr<Filter3D>& filter);
+
+    // Сборка из готового кода (без InjectFilters). Фильтры должны быть уже добавлены
+    // (для биндинга текстур); их uniform-id совпадают с кэшем за счёт детерминизма.
+    void BuildCompiled(const std::string& vertexSource, const std::string& fragmentSource);
+
+    // Версия кодогенератора шейдеров. Бамп при изменении генерации/инъекции.
+    static int ShaderGenVersion() { return 1; }
     void SetLightingModel(std::unique_ptr<ILightingModel> model) { _lighting = std::move(model); }
     void SetRoughnessScale(float scale) { _roughnessScale = scale; }
+    float GetRoughnessScale() const { return _roughnessScale; }
+    std::string GetLightingTypeName() const; // тип текущей lighting-модели ("PBR"/"Phong"/"Unlit")
     const FiltersList& GetFilters() const;
     void Build() override;
 protected:

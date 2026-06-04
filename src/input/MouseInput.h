@@ -26,9 +26,13 @@ public:
 	virtual void SetCursorPosition(double x, double y) {}
 	virtual void SetCursorVisible(bool visible) {}
 
+	// Когда UI (ImGui) забирает мышь — события не рассылаются слушателям (камере/пикингу).
+	void SetMouseCaptured(bool captured) { _mouseCaptured = captured; }
+
 protected:
 	double _mouseX = 0.0;
 	double _mouseY = 0.0;
+	bool _mouseCaptured = false;
 private:
 	std::vector<IMouseListener*>* GetContainerByType(const std::string& type);
 

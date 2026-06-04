@@ -22,6 +22,15 @@
 #include "render/IBLBaker.h"
 #include "models/PlaneModel.h"
 #include "render/ShadowMap.h"
+#include "editor/EditorUI.h"
+#include "editor/ViewportPanel.h"
+#include "editor/HierarchyPanel.h"
+#include "editor/InspectorPanel.h"
+#include "editor/MaterialsInspectorPanel.h"
+#include "editor/MenuBarPanel.h"
+#include "editor/EditorConfig.h"
+#include "scene/SceneSerializer.h"
+#include <string>
 
 GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
 GLfloat lastFrame = 0.0f;  	// Time of last frame
@@ -30,7 +39,7 @@ GLfloat lastFrame = 0.0f;  	// Time of last frame
 int initWindow(float w, float h);
 GLFWwindow* window;
 
-int main() {
+int main(int argc, char** argv) {
 
 	float screenWidth = 800;
 	float screenHeight = 600;
@@ -43,7 +52,10 @@ int main() {
 	Engine::GetInstance().Init(window);
 
 	{
-		auto camera = std::make_shared<FirstPersonCamera>();
+		// Для редактора используем FreeLookCamera: курсор свободен (drag для обзора),
+		// чтобы панели ImGui были кликабельны. FirstPersonCamera прячет/центрирует
+		// курсор — несовместимо с UI.
+		auto camera = std::make_shared<FreeLookCamera>();
 		camera->SetScreenWidth(screenWidth);
 		camera->SetScreenHeight(screenHeight);
 		camera->buildProjectionMatrix(45.0f, 0.1f, 100.0f);
@@ -59,6 +71,17 @@ int main() {
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
+
+		// Сцена на старте: аргумент командной строки либо последняя сцена из конфига.
+		std::string startupScene = (argc > 1) ? std::string(argv[1]) : EditorConfig::GetLastScene();
+		for (char& sc : startupScene) { if (sc == '\\') sc = '/'; }
+		bool sceneLoaded = false;
+		if (!startupScene.empty()) {
+			sceneLoaded = SceneSerializer::Load(*scene3D, *camera, startupScene);
+		}
+
+		if (!sceneLoaded) {
+		// ── Демо-сцена по умолчанию (если сцена не загружена) ──
 		auto cubemap = HDRLoader::EquirectFileToCubemap("../assets/env/citrus_orchard_road_puresky_4k.hdr");
 		if (cubemap) {
 			scene3D->SetSkybox(cubemap);
@@ -110,6 +133,7 @@ int main() {
 		military_box->SetScale(0.05f, 0.05f, 0.05f);
 		military_box->SetPosition(6.0f, 0.0f, 6.0f);
 		scene3D->AddChild(military_box);
+		} // !sceneLoaded
 
 		// auto model = std::make_shared<ExternalModel>("../assets/models/bolete_mushrooms_pdvcb_high/Bolete_Mushrooms_pdvcB_High.fbx");
 		// model->SetPosition(5.0f, 0.0f, 0.0f);
@@ -129,17 +153,29 @@ int main() {
 		// scene3D->AddChild(box);
 		// box->AddChild(box2);
 
-		glfwSetWindowUserPointer(window, camera.get());
+		// Размер/аспект камеры теперь следует за вьюпорт-панелью, не за окном.
 		glfwSetFramebufferSizeCallback(window, [](GLFWwindow* w, int width, int height) {
-			auto* cam = static_cast<Camera*>(glfwGetWindowUserPointer(w));
-			if (cam) {
-				cam->SetScreenWidth(static_cast<float>(width));
-				cam->SetScreenHeight(static_cast<float>(height));
-				cam->buildProjectionMatrix(45.0f, 0.1f, 100.0f);
-			}
 			glViewport(0, 0, width, height);
 		});
 
+		// ImGui инициализируем ПОСЛЕ установки всех наших GLFW-колбэков,
+		// чтобы бэкенд ImGui корректно зацепился к ним.
+		EditorUI editor;
+		editor.Init(window);
+		ViewportPanel viewport;
+		HierarchyPanel hierarchy;
+		InspectorPanel inspector;
+		MaterialsInspectorPanel materialsInspector;
+		MenuBarPanel menuBar;
+
+		bool editorMode = false;       // по умолчанию редактор выключен
+		bool eKeyWasPressed = false;   // для edge-детекта Ctrl+E
+		// Видимость панелей (View → Panels)
+		bool showHierarchy = true;
+		bool showInspector = true;
+		bool showMaterials = true;
+		// В полноэкранном режиме пикинг по ЛКМ через MouseInput; в редакторе — через вьюпорт.
+		Engine::GetInstance().GetObjectSelector()->SetAutoPick(true);
 
 		//main loop
 		while (!glfwWindowShouldClose(window))
@@ -150,21 +186,74 @@ int main() {
 			deltaTime = currentFrame - lastFrame;
 			lastFrame = currentFrame;
 
-			// box->Rotate(0.0f,1 * deltaTime, 0.0f);
-			// box2->Rotate(1 * deltaTime,0.0f, 0.0f);
-
-
 			Engine::GetInstance().GetUpdateBroadcaster()->Update(deltaTime);
-			RenderContext ctx;
-			ctx.model = glm::mat4(1.0f);
-			ctx.camera = camera.get();
-			ctx.view = camera->GetViewMatrix();
-			ctx.projection = camera->getProjectionMatrix();
-			ctx.scene3D = scene3D.get();
-			scene3D->Render(ctx);
+
+			// Ctrl+E — переключение режима редактора (по фронту нажатия).
+			const bool ctrlDown = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
+			                    || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
+			const bool eDown = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+			if (ctrlDown && eDown && !eKeyWasPressed) {
+				editorMode = !editorMode;
+				// В редакторе пикингом управляет вьюпорт (панельные координаты).
+				Engine::GetInstance().GetObjectSelector()->SetAutoPick(!editorMode);
+			}
+			eKeyWasPressed = eDown;
+
+			if (editorMode)
+			{
+				editor.BeginFrame();
+
+				// Чистим default framebuffer (фон окна редактора под панелями ImGui).
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+				// Верхнее меню — до докспейса, чтобы WorkSize учёл его высоту.
+				menuBar.Draw(scene3D.get(), camera.get(), &showHierarchy, &showInspector, &showMaterials);
+
+				// Host-докспейс с раскладкой по умолчанию (Hierarchy | Viewport | Inspector).
+				editor.BeginDockspace();
+
+				// Сцена рендерится в FBO и показывается в панели Viewport.
+				viewport.Draw(scene3D.get(), camera.get());
+				hierarchy.Draw(scene3D.get(), &showHierarchy);
+				inspector.Draw(&showInspector);
+				materialsInspector.Draw(&showMaterials);
+
+				editor.DrawDefaultUi();
+				editor.UpdateInputCapture(viewport.IsHovered());
+				editor.EndFrame();
+			}
+			else
+			{
+				// Обычный режим: сцена на весь экран, мышь полностью у камеры.
+				Engine::GetInstance().GetMouseInput()->SetMouseCaptured(false);
+
+				int fbWidth = 0, fbHeight = 0;
+				glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+				if (static_cast<int>(camera->GetScreenWidth()) != fbWidth ||
+				    static_cast<int>(camera->GetScreenHeight()) != fbHeight) {
+					camera->SetScreenWidth(static_cast<float>(fbWidth));
+					camera->SetScreenHeight(static_cast<float>(fbHeight));
+					camera->buildProjectionMatrix(45.0f, 0.1f, 100.0f);
+				}
+
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glViewport(0, 0, fbWidth, fbHeight);
+
+				RenderContext ctx;
+				ctx.model = glm::mat4(1.0f);
+				ctx.camera = camera.get();
+				ctx.view = camera->GetViewMatrix();
+				ctx.projection = camera->getProjectionMatrix();
+				ctx.scene3D = scene3D.get();
+				scene3D->Render(ctx);
+			}
 
 			glfwSwapBuffers(window);
 		}
+
+		editor.Shutdown();
 	}
 
 	Engine::GetInstance().Cleanup();

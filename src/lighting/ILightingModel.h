@@ -23,4 +23,6 @@ public:
     virtual unsigned int GetTextureUnitCount() const { return 0; }
     virtual void OnProgramBuild(GLuint program) {}
 
+    // Имя типа для сериализации материала ("Phong"/"PBR"/"Unlit").
+    virtual std::string GetTypeName() const { return "Unlit"; }
 };

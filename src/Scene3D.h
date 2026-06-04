@@ -3,6 +3,7 @@
 #include "Pivot3D.h"
 #include <glm/glm.hpp>
 #include <memory>
+#include <string>
 #include "materials/MaterialBase.h"
 #include "models/BoxModel.h"
 #include "resources/Texture2D.h"
@@ -79,9 +80,16 @@ public:
 	const glm::vec3* GetDirLightDirection() const { return &_dirLightDirection; }
 	const glm::vec3* GetDirLightColor() const { return &_dirLightColor; }
 	float GetDirLightIntensity() const { return _dirLightIntensity; }
+	void SetDirLightDirection(const glm::vec3& v) { _dirLightDirection = v; }
+	void SetDirLightColor(const glm::vec3& v) { _dirLightColor = v; }
+	void SetDirLightIntensity(float v) { _dirLightIntensity = v; }
 
 	// Включает отрисовку фона из cubemap'а (создаёт Skybox внутри). Требует GL-контекста.
 	void SetSkybox(std::shared_ptr<TextureCube> cubemap);
+
+	// Загружает HDR, печёт IBL, ставит skybox и запоминает путь (для сериализации сцены).
+	void SetEnvironmentFromHdr(const std::string& path);
+	const std::string& GetHdrPath() const { return _hdrPath; }
 
 	// IBL-окружение (irradiance + prefiltered specular + BRDF LUT) для PBRLightingModel.
 	void SetEnvironment(std::shared_ptr<TextureCube> irradiance,
@@ -96,8 +104,11 @@ public:
 	void SetShadowArea(const glm::vec3& center, float radius) { _shadowCenter = center; _shadowRadius = radius; }
 	float GetShadowStrength() const { return _shadowStrength; }
 	void SetShadowStrength(float value) { _shadowStrength = value; }
+	float GetShadowRadius() const { return _shadowRadius; }
+	const glm::vec3& GetShadowCenter() const { return _shadowCenter; }
 
 private:
+	std::string _hdrPath;
     void InitLightView();
 	void InitEnvironment();
 };

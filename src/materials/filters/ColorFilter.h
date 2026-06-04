@@ -14,6 +14,9 @@ public:
     unsigned int GetColor() const { return _color; }
     void SetColor(unsigned int color) { _color = color; }
     unsigned int GetUniformsCount() const override { return 1; }
+
+    std::string GetTypeName() const override { return "Color"; }
+    FilterData Serialize() const override; // + color
 protected:
     const std::string& GetBaseFilterCode() const override {
         return _colorFilterCode;

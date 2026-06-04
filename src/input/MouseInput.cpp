@@ -35,6 +35,9 @@ void MouseInput::OnMouseMove(double xPos, double yPos)
 {
 	_mouseX = xPos;
 	_mouseY = yPos;
+	if (_mouseCaptured) {
+		return;
+	}
 	auto listCopy = _cursorPosListeners;
 	for (IMouseListener* listener : listCopy)
 	{
@@ -44,6 +47,9 @@ void MouseInput::OnMouseMove(double xPos, double yPos)
 
 void MouseInput::OnMouseButton(int button, int action)
 {
+	if (_mouseCaptured) {
+		return;
+	}
 	auto listCopy = _mouseButtonListeners;
 	for (IMouseListener* listener : listCopy)
 	{
@@ -53,6 +59,9 @@ void MouseInput::OnMouseButton(int button, int action)
 
 void MouseInput::OnMouseScroll(double xOffset, double yOffset)
 {
+	if (_mouseCaptured) {
+		return;
+	}
 	auto listCopy = _scrollListeners;
 	for (IMouseListener* listener : listCopy)
 	{

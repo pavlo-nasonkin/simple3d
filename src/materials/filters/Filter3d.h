@@ -3,6 +3,8 @@
 #include <string>
 #include "GLEWImporter.h"
 
+struct FilterData;
+
 class Filter3D
 {
 public:
@@ -69,6 +71,11 @@ public:
 
     ResultType GetResultType() const { return _resultType; }
     void SetResultType(ResultType type) { _resultType = type; }
+
+    // Самоописание фильтра (для сериализации/инспектора):
+    // строковый тип + выгрузка полей в нейтральный FilterData.
+    virtual std::string GetTypeName() const = 0;
+    virtual FilterData Serialize() const; // базовая реализация: type/slot/blend
 protected:
 
     virtual const std::string& GetBaseFilterCode() const = 0;

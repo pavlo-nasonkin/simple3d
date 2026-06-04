@@ -11,7 +11,9 @@
 #include "materials/DepthMaterial.h"
 #include "render/Skybox.h"
 #include "render/ShadowMap.h"
+#include "render/IBLBaker.h"
 #include "resources/TextureCube.h"
+#include "resources/HDRLoader.h"
 
 Scene3D::Scene3D() :
     _lightPosition({ 5.2f, 5.0f, 5.0 }),
@@ -86,6 +88,20 @@ void Scene3D::EnableShadows(int mapSize, float radius)
 void Scene3D::SetSkybox(std::shared_ptr<TextureCube> cubemap)
 {
 	_skybox = std::make_shared<Skybox>(std::move(cubemap));
+}
+
+void Scene3D::SetEnvironmentFromHdr(const std::string& path)
+{
+	auto cubemap = HDRLoader::EquirectFileToCubemap(path);
+	if (!cubemap) {
+		return;
+	}
+	_hdrPath = path;
+	SetSkybox(cubemap);
+	auto irradiance  = IBLBaker::BakeIrradiance(*cubemap);
+	auto prefiltered = IBLBaker::BakePrefiltered(*cubemap);
+	auto brdfLUT     = IBLBaker::BakeBRDFLUT();
+	SetEnvironment(irradiance, prefiltered, brdfLUT);
 }
 
 void Scene3D::PostRender()

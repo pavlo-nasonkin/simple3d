@@ -1,5 +1,13 @@
 #include "ColorFilter.h"
 #include "utils/StringUtils.h"
+#include "FilterData.h"
+
+FilterData ColorFilter::Serialize() const
+{
+    FilterData data = Filter3D::Serialize();
+    data.color = _color;
+    return data;
+}
 
 std::string ColorFilter::_colorFilterCode =
         "uniform vec4 uColor{uniform_id};\n"

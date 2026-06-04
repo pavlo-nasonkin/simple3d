@@ -12,6 +12,7 @@
 
 #include "Engine.h"
 #include "camera/Camera.h"
+#include "render/Framebuffer.h"
 
 
 ObjectSelector::ObjectSelector(const std::shared_ptr<Scene3D> &scene, const std::shared_ptr<Camera>& camera)
@@ -43,10 +44,45 @@ void ObjectSelector::RemoveSelectListener(IObjectSelectorListener* listener)
 
 void ObjectSelector::HandleMouseButton(int button, int action)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	if (_autoPick && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
 		PickObject();
 	}
+}
+
+void ObjectSelector::PickAt(int x, int y, int width, int height)
+{
+	auto scene3D = _scene.lock();
+	auto camera = _camera.lock();
+	if (!scene3D || !camera || width <= 0 || height <= 0) {
+		return;
+	}
+
+	if (!_idFramebuffer) {
+		_idFramebuffer = std::make_unique<Framebuffer>(width, height);
+	} else {
+		_idFramebuffer->Resize(width, height);
+	}
+
+	_idFramebuffer->Bind();
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	RenderContext ctx;
+	ctx.camera = camera.get();
+	ctx.view = camera->GetViewMatrix();
+	ctx.projection = camera->getProjectionMatrix();
+	ctx.scene3D = scene3D.get();
+	scene3D->Render(ctx, _colorMaterial.get());
+
+	// ImGui-координаты: origin сверху-слева; glReadPixels — снизу-слева.
+	unsigned char pixel[3] = {0, 0, 0};
+	glReadPixels(x, height - 1 - y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, pixel);
+	Framebuffer::Unbind();
+
+	const unsigned int id = (pixel[2] << 16) | (pixel[1] << 8) | pixel[0];
+	_selectedObject = (id != 0) ? scene3D->GetChildById(id) : nullptr;
+	FireChange(_selectedObject);
 }
 
 const std::shared_ptr<Pivot3D>& ObjectSelector::GetSelectedObject()
@@ -72,41 +108,18 @@ void ObjectSelector::ReadPixel(void* pixel)
 
 void ObjectSelector::PickObject()
 {
-	//TODO set render to texture
-
-	auto scene3D = _scene.lock();
-	if (!scene3D) {
-		return;
-	}
-
+	// Полноэкранный (game) режим: координаты мыши — в координатах окна, viewport = окно.
+	// Рендерим id-pass в offscreen-FBO (как PickAt), а не в default framebuffer —
+	// иначе при рендере во время колбэка ввода ловим GL-ошибки и мусорный пиксель.
 	auto camera = _camera.lock();
 	if (!camera) {
 		return;
 	}
-
-	//scene render
-	RenderContext ctx;
-	ctx.camera = camera.get();
-	ctx.view = ctx.camera->GetViewMatrix();
-	ctx.projection = ctx.camera->getProjectionMatrix();
-    scene3D->Render(ctx, _colorMaterial.get());
-	//get pixel
-	//set render to backbuffer
-	unsigned char pixel[4];
-	pixel[3] = 0;
-
-	std::cout << "mouseXY " << Engine::GetInstance().GetMouseInput()->GetMouseX() << "  " << Engine::GetInstance().GetMouseInput()->GetMouseY() << std::endl;
-	std::cout << "screen" << ctx.camera->GetScreenWidth() << "  " << ctx.camera->GetScreenHeight() << std::endl;
-	ReadPixel(pixel);
-	std::cout << "R: " << (int)pixel[0] << std::endl;
-	std::cout << "G: " << (int)pixel[1] << std::endl;
-	std::cout << "B: " << (int)pixel[2] << std::endl;
-	std::cout << std::endl;
-	unsigned int selectedObjectId = (pixel[3] << 24) | (pixel[2] << 16) | (pixel[1] << 8) | (pixel[0]);
-	std::cout << "ObjectId = " << selectedObjectId << std::endl;
-	_selectedObject = scene3D->GetChildById(selectedObjectId);
-	FireChange(_selectedObject);
-
+	const int width = static_cast<int>(camera->GetScreenWidth());
+	const int height = static_cast<int>(camera->GetScreenHeight());
+	const int x = static_cast<int>(Engine::GetInstance().GetMouseInput()->GetMouseX());
+	const int y = static_cast<int>(Engine::GetInstance().GetMouseInput()->GetMouseY());
+	PickAt(x, y, width, height);
 }
 
 void ObjectSelector::FireChange(std::shared_ptr<Pivot3D> selectedObject)
