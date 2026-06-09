@@ -140,15 +140,15 @@ void PBRLightingModel::Bind(GLuint firstTextureUnit, const RenderContext &ctx) {
     GLint viewPosLoc = _uniformCache.GetUniformLocation("viewPos");
     glUniform3f(viewPosLoc, ctx.camera->Position.x, ctx.camera->Position.y, ctx.camera->Position.z);
 
-    // Directional light (sun): direction + radiance (color * intensity), без attenuation.
-    const glm::vec3* dir = ctx.scene3D->GetDirLightDirection();
-    const glm::vec3 radiance = (*ctx.scene3D->GetDirLightColor()) * ctx.scene3D->GetDirLightIntensity();
-    glUniform3f(_uniformCache.GetUniformLocation("dirLight.direction"), dir->x, dir->y, dir->z);
+    // Directional light (sun): берём из активного LightComponent (или полей сцены).
+    const glm::vec3 dir = ctx.scene3D->GetEffectiveDirLightDirection();
+    const glm::vec3 radiance = ctx.scene3D->GetEffectiveDirLightColor() * ctx.scene3D->GetEffectiveDirLightIntensity();
+    glUniform3f(_uniformCache.GetUniformLocation("dirLight.direction"), dir.x, dir.y, dir.z);
     glUniform3f(_uniformCache.GetUniformLocation("dirLight.color"), radiance.x, radiance.y, radiance.z);
 
     // Плоский ambient окружения (fallback, когда IBL нет), независим от солнца.
-    const glm::vec3* ambient = ctx.scene3D->GetLightAmbient();
-    glUniform3f(_uniformCache.GetUniformLocation("ambientLight"), ambient->x, ambient->y, ambient->z);
+    const glm::vec3 ambient = ctx.scene3D->GetEffectiveAmbient();
+    glUniform3f(_uniformCache.GetUniformLocation("ambientLight"), ambient.x, ambient.y, ambient.z);
 
     // IBL: irradiance + prefiltered specular + BRDF LUT на юнитах после фильтров материала.
     const SceneEnvironment& env = ctx.scene3D->GetEnvironment();

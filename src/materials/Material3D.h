@@ -9,7 +9,7 @@
 class ILightingModel;
 class Shader;
 class Texture2D;
-class Mesh;
+class Pivot3D;
 class Filter3D;
 
 class Material3D: public MaterialBase
@@ -19,7 +19,7 @@ class Material3D: public MaterialBase
 public:
     explicit Material3D(const std::string &vertexShaderPath, const std::string &fragmentShaderPath);
     ~Material3D() override = default;
-	void Bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
+	void Bind(const RenderContext& ctx, const Pivot3D* node = nullptr) override;
 	void Unbind() override;
     void AddFilter(const std::shared_ptr<Filter3D>& filter);
 

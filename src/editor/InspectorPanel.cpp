@@ -11,6 +11,9 @@
 #include "Pivot3D.h"
 #include "object_selector/ObjectSelector.h"
 #include "scene/Prefab.h"
+#include "behaviours/Behaviour.h"
+#include "behaviours/BehaviourFactory.h"
+#include "editor/PropertyDrawer.h"
 
 void InspectorPanel::Draw(bool* open)
 {
@@ -67,6 +70,42 @@ void InspectorPanel::Draw(bool* open)
     bool receiveShadows = node->GetReceiveShadows();
     if (ImGui::Checkbox("Receive shadows", &receiveShadows)) {
         node->SetReceiveShadows(receiveShadows);
+    }
+
+    ImGui::SeparatorText("Behaviours");
+    const auto& behaviours = node->GetBehaviours();
+    if (behaviours.empty()) {
+        ImGui::TextDisabled("Нет компонентов");
+    }
+    Behaviour* behaviourToRemove = nullptr; // удаляем после цикла, чтобы не ломать обход
+    for (const auto& behaviour : behaviours) {
+        ImGui::PushID(behaviour.get());
+        bool enabled = behaviour->IsEnabled();
+        if (ImGui::Checkbox("##enabled", &enabled)) {
+            behaviour->SetEnabled(enabled);
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Remove")) {
+            behaviourToRemove = behaviour.get();
+        }
+        ImGui::SameLine();
+        if (ImGui::CollapsingHeader(behaviour->GetTypeName().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            editor::DrawBehaviourProperties(behaviour.get(), node.get());
+        }
+        ImGui::PopID();
+    }
+    if (behaviourToRemove) {
+        node->RemoveBehaviour(behaviourToRemove);
+    }
+
+    // Добавление компонента из реестра фабрики.
+    if (ImGui::BeginCombo("##addBehaviour", "Add Behaviour...")) {
+        for (const auto& [type, creator] : BehaviourFactory::Registry()) {
+            if (ImGui::Selectable(type.c_str())) {
+                node->AddBehaviour(BehaviourFactory::Create(type));
+            }
+        }
+        ImGui::EndCombo();
     }
 
     ImGui::SeparatorText("Prefab");

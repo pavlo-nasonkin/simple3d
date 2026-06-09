@@ -10,5 +10,5 @@ public:
     SkinnedMaterial3D(const std::string &vertexShaderPath, const std::string &fragmentShaderPath);
     ~SkinnedMaterial3D() override = default;
     void SetBoneTransform(unsigned int index, const glm::mat4& transform);
-    void Bind(const RenderContext& ctx, const Mesh* mesh = nullptr) override;
+    void Bind(const RenderContext& ctx, const Pivot3D* node = nullptr) override;
 };

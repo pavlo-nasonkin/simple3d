@@ -11,6 +11,7 @@
 
 #include "render/Framebuffer.h"
 #include "render/RenderContext.h"
+#include "render/Renderer.h"
 #include "Scene3D.h"
 #include "Pivot3D.h"
 #include "camera/Camera.h"
@@ -54,7 +55,7 @@ void ViewportPanel::Draw(Scene3D* scene, Camera* camera)
     ctx.view = camera->GetViewMatrix();
     ctx.projection = camera->getProjectionMatrix();
     ctx.scene3D = scene;
-    scene->Render(ctx);
+    Renderer::RenderScene(*scene, ctx);
     Framebuffer::Unbind();
 
     // GL-текстура: origin внизу-слева → переворачиваем V (uv0=(0,1), uv1=(1,0)).

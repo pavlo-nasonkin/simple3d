@@ -1,6 +1,7 @@
 #include "Pivot3D.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include "Shader.h"
+#include "render/MeshRenderer.h"
 #include <algorithm>
 #include <stdexcept>
 #include <glm/glm.hpp>
@@ -18,13 +19,144 @@ Pivot3D::Pivot3D(): _scale(1.0f,1.0f,1.0f),
 
 Pivot3D::~Pivot3D()
 {
+    // OnDetach для компонентов, пока они ещё живы (отписки и пр.).
+    for (auto& behaviour : _behaviours) {
+        if (behaviour) {
+            behaviour->Detach();
+        }
+    }
+    _behaviours.clear();
+    _pendingAdd.clear();
+    _pendingRemove.clear();
+
     _parent.reset();
     RemoveChildren();
+}
+
+void Pivot3D::UpdateBehaviours(float deltaTime)
+{
+    _iteratingBehaviours = true;
+    // Итерируемся по индексам живого вектора; структурные изменения во время тика
+    // откладываются (см. AddBehaviour/RemoveBehaviourAt), поэтому вектор стабилен.
+    for (std::size_t i = 0; i < _behaviours.size(); ++i) {
+        Behaviour* behaviour = _behaviours[i].get();
+        if (IsPendingRemoval(behaviour)) {
+            continue;
+        }
+        behaviour->Tick(deltaTime);
+    }
+    _iteratingBehaviours = false;
+    FlushBehaviourChanges();
+}
+
+void Pivot3D::UpdateSubtree(float deltaTime)
+{
+    if (!_active) {
+        return;
+    }
+    UpdateBehaviours(deltaTime);
+    // Копия списка детей: компонент в OnUpdate может добавить/удалить дочерний узел.
+    auto childrenCopy = _children;
+    for (auto& child : childrenCopy) {
+        child->UpdateSubtree(deltaTime);
+    }
+}
+
+void Pivot3D::RemoveBehaviourAt(std::size_t index)
+{
+    if (index >= _behaviours.size()) {
+        return;
+    }
+    Behaviour* behaviour = _behaviours[index].get();
+    if (_iteratingBehaviours) {
+        _pendingRemove.push_back(behaviour); // удалится после текущего тика
+        return;
+    }
+    behaviour->Detach();
+    _behaviours.erase(_behaviours.begin() + static_cast<std::ptrdiff_t>(index));
+}
+
+void Pivot3D::FlushBehaviourChanges()
+{
+    for (Behaviour* toRemove : _pendingRemove) {
+        for (std::size_t i = 0; i < _behaviours.size(); ++i) {
+            if (_behaviours[i].get() == toRemove) {
+                toRemove->Detach();
+                _behaviours.erase(_behaviours.begin() + static_cast<std::ptrdiff_t>(i));
+                break;
+            }
+        }
+    }
+    _pendingRemove.clear();
+
+    for (auto& added : _pendingAdd) {
+        _behaviours.push_back(std::move(added));
+    }
+    _pendingAdd.clear();
+}
+
+bool Pivot3D::IsPendingRemoval(const Behaviour* behaviour) const
+{
+    return std::find(_pendingRemove.begin(), _pendingRemove.end(), behaviour) != _pendingRemove.end();
 }
 
 void Pivot3D::Init()
 {
 
+}
+
+Behaviour* Pivot3D::AddBehaviour(std::unique_ptr<Behaviour> behaviour) {
+	if (!behaviour) {
+		return nullptr;
+	}
+	Behaviour* raw = behaviour.get();
+	if (_iteratingBehaviours) {
+		_pendingAdd.push_back(std::move(behaviour));
+	} else {
+		_behaviours.push_back(std::move(behaviour));
+	}
+	raw->Attach(this);
+	return raw;
+}
+
+void Pivot3D::RemoveBehaviour(Behaviour* behaviour) {
+	if (!behaviour) {
+		return;
+	}
+	for (std::size_t i = 0; i < _behaviours.size(); ++i) {
+		if (_behaviours[i].get() == behaviour) {
+			RemoveBehaviourAt(i);
+			return;
+		}
+	}
+}
+
+Behaviour* Pivot3D::FindBehaviourByType(const std::string& type) const {
+	for (const auto& behaviour : _behaviours) {
+		if (behaviour && behaviour->GetTypeName() == type) {
+			return behaviour.get();
+		}
+	}
+	return nullptr;
+}
+
+Pivot3D* Pivot3D::Root() {
+	Pivot3D* node = this;
+	while (true) {
+		auto parent = node->_parent.lock();
+		if (!parent) {
+			break;
+		}
+		node = parent.get();
+	}
+	return node;
+}
+
+glm::mat4 Pivot3D::WorldMatrix() const {
+	if (auto parent = _parent.lock()) {
+		return parent->WorldMatrix() * LocalMatrix();
+	}
+	return LocalMatrix();
 }
 
 glm::mat4 Pivot3D::LocalMatrix() const {
@@ -87,10 +219,34 @@ void Pivot3D::Render(const RenderContext &ctx, MaterialBase* material /*= nullpt
 	RenderContext context = ctx;
 
 	context.model = ctx.model * LocalMatrix();
+
+	if (_renderer) {
+		_renderer->Draw(context, this, material);
+	}
+
     for (auto child : _children)
     {
         child->Render(context, material);
     }
+}
+
+void Pivot3D::SetRenderer(std::unique_ptr<MeshRenderer> renderer)
+{
+	_renderer = std::move(renderer);
+}
+
+void Pivot3D::CollectDrawItems(const glm::mat4& parentWorld, bool shadowPass, std::vector<DrawItem>& out) const
+{
+	if (shadowPass && !_castShadows) {
+		return; // поддерево не отбрасывает тень — пропускаем целиком
+	}
+	const glm::mat4 world = parentWorld * LocalMatrix();
+	if (_renderer) {
+		out.push_back(DrawItem{ _renderer.get(), this, world });
+	}
+	for (const auto& child : _children) {
+		child->CollectDrawItems(world, shadowPass, out);
+	}
 }
 
 void Pivot3D::SetPosition(float x, float y, float z)
@@ -174,6 +330,12 @@ unsigned int Pivot3D::GetId() const
 void Pivot3D::SetId(unsigned int id)
 {
 	_id = id;
+	// Продвигаем глобальный счётчик за восстановленный id (при загрузке сцены/префаба),
+	// чтобы новые узлы не получили id уже существующих → корректный пикинг и NodeRef/BehRef.
+	if (id >= _idCounter)
+	{
+		_idCounter = id + 1;
+	}
 }
 
 const std::string& Pivot3D::GetName() const

@@ -88,21 +88,17 @@ void FreeLookCamera::HandleMouseMove(double xpos, double ypos)
 		Pitch = Pitch + yOffset;
 		Yaw = fmodf(Yaw + xOffset, 360.f);
 
-		glm::mat4 view;
-		
-		
+		glm::mat4 view(1.0f);
+
 		view = glm::translate(view, fakeTarget);
 		view = glm::rotate(view, glm::radians(Yaw + 90.0f), glm::vec3(0.f, 1.f, 0.f));
 		view = glm::rotate(view, glm::radians(Pitch), glm::vec3(1.f, 0.f, 0.f));
 		view = glm::translate(view, glm::vec3(0.f, 0.f, _rotationOrbitRadius)); // add camera.radius to control the distance-from-target
-		
 
 		Right = view[0];
 		Up = view[1];
 		Front = -view[2]; // minus because OpenGL camera looks towards negative Z.
 		Position = view[3];
-
-		view = glm::inverse(view);
 	}
 }
 

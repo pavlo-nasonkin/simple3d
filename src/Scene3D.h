@@ -18,6 +18,8 @@ class Skybox;
 class TextureCube;
 class ShadowMap;
 class DepthMaterial;
+class CameraBehaviour;
+class DirectionalLightComponent;
 
 class SceneEnvironment {
 	std::shared_ptr<TextureCube> _irradiance;        // diffuse IBL
@@ -62,11 +64,11 @@ public:
 	Scene3D();
 	~Scene3D() override = default;
 
-	void Update();
-    void Render(const RenderContext& ctx, MaterialBase* material = nullptr) override;
-	void PostRender();
-	void PrepareRender();
+	void Update(float deltaTime);
     void Init() override;
+
+	// Пересчитать активные источники света из графа (вызывается Renderer перед проходами).
+	void RefreshActiveLights();
 	//light params
 	const glm::vec3* GetLightAmbient() const { return &_lightAmbient; }
 	void SetLightAmbient(glm::vec3 val) { _lightAmbient = val; }
@@ -83,6 +85,14 @@ public:
 	void SetDirLightDirection(const glm::vec3& v) { _dirLightDirection = v; }
 	void SetDirLightColor(const glm::vec3& v) { _dirLightColor = v; }
 	void SetDirLightIntensity(float v) { _dirLightIntensity = v; }
+
+	// «Эффективные» параметры солнца: берутся из активного DirectionalLightComponent
+	// (если он найден в графе на этом кадре), иначе — из локальных полей сцены (fallback).
+	// Активный свет переопределяется в начале Render(); рендер/тени читают эти геттеры.
+	glm::vec3 GetEffectiveDirLightDirection() const;
+	glm::vec3 GetEffectiveDirLightColor() const;
+	float     GetEffectiveDirLightIntensity() const;
+	glm::vec3 GetEffectiveAmbient() const;
 
 	// Включает отрисовку фона из cubemap'а (создаёт Skybox внутри). Требует GL-контекста.
 	void SetSkybox(std::shared_ptr<TextureCube> cubemap);
@@ -107,7 +117,19 @@ public:
 	float GetShadowRadius() const { return _shadowRadius; }
 	const glm::vec3& GetShadowCenter() const { return _shadowCenter; }
 
+	// Ресурсы рендера (читает Renderer). Владение остаётся за сценой.
+	ShadowMap* GetShadowMap() const { return _shadowMap.get(); }
+	DepthMaterial* GetDepthMaterial() const { return _depthMaterial.get(); }
+	Skybox* GetSkybox() const { return _skybox.get(); }
+
+	// Активная камера сцены (узел с CameraBehaviour). Рендер-точки берут view/projection отсюда.
+	void SetActiveCamera(CameraBehaviour* camera) { _activeCamera = camera; }
+	CameraBehaviour* GetActiveCamera() const { return _activeCamera; }
+
 private:
+	CameraBehaviour* _activeCamera = nullptr;
+	DirectionalLightComponent* _activeDirLight = nullptr; // кэш на кадр (см. Render)
+	DirectionalLightComponent* FindActiveDirectionalLight();
 	std::string _hdrPath;
     void InitLightView();
 	void InitEnvironment();

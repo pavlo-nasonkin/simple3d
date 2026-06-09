@@ -1,0 +1,1202 @@
+D:\projects\simple3d\cmake-build-debug\simple3d.exe
+GL VERSION 3.3.0 - Build 32.0.101.5763
+Engine Initialized
+Built shader with filters. Vertex shader:
+#version 330 core
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 normal;
+layout (location = 2) in vec2 texCoord0;
+layout (location = 3) in vec3 tangent;
+layout (location = 4) in vec2 texCoord1;
+layout (location = 5) in vec4 color;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+out vec3 FragPos;  
+out vec3 Normal;
+out vec2 TexCoords0;
+out vec2 TexCoords1;
+out mat3 TBN;
+out vec4 Color;
+  
+void main()
+{
+    gl_Position = projection * view * model * vec4(position, 1.0f);
+    FragPos = vec3(model * vec4(position, 1.0f));
+
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    vec3 N = normalize(normalMatrix * normal);
+    vec3 T = normalize(normalMatrix * tangent);
+    T      = normalize(T - dot(T, N) * N);
+    vec3 B = cross(N, T);
+    TBN    = mat3(T, B, N);
+    
+    Normal    = N;
+
+    TexCoords0 = texCoord0;
+    TexCoords1 = texCoord1;
+    Color      = color;
+}
+Fragment shader:
+#version 330 core
+
+out vec4 color;
+
+in vec3 FragPos;  
+in vec3 Normal;  
+in vec2 TexCoords0;
+in vec2 TexCoords1;
+in mat3 TBN;
+in vec4 Color;
+
+uniform vec4 uBaseColor;
+uniform float uRoughnessScale; // множитель к R (1.0 = без изменений)
+
+struct Material { float shininess; };
+struct Light { vec3 position; vec3 ambient; vec3 diffuse; vec3 specular; };
+uniform vec3 viewPos;
+uniform Material material;
+uniform Light light;
+
+
+uniform vec4 uColor0;
+vec4 colorFilter0()
+{
+    return uColor0;
+}
+
+// __FRAGMENT_DECLS__
+
+void main()
+{
+    vec3 BASE_COLOR    = uBaseColor.rgb;
+    vec3 SPEC_STRENGTH = vec3(1.0);
+    vec3 N             = normalize(Normal);
+    vec3 EMISSIVE      = vec3(0.0);
+
+    float M  = 0.0;
+    float R  = 0.5;
+    float AO = 1.0;
+
+    // __APPLY_BASE_COLOR_FILTERS__
+    // __APPLY_SPECULAR_FILTERS__
+    // __APPLY_NORMAL_FILTERS__
+
+    // __APPLY_METALLIC_FILTERS__
+    // __APPLY_ROUGHNESS_FILTERS__
+    R = clamp(R * uRoughnessScale, 0.0, 1.0);
+    // __APPLY_AO_FILTERS__
+
+        vec3 lightDir = normalize(light.position - FragPos);
+    float diff    = max(dot(N, lightDir), 0.0);
+
+    vec3 ambient  = light.ambient  * BASE_COLOR;
+    vec3 diffuse  = light.diffuse  * diff * BASE_COLOR;
+
+    vec3 viewDir    = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, N);
+    float spec      = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    vec3 specular   = light.specular * spec * SPEC_STRENGTH;
+
+    color = vec4(ambient + diffuse + specular + EMISSIVE, 1.0);
+
+
+
+    color *= colorFilter0();
+    // __APPLY_OVERLAY_FILTERS__
+}
+Built shader with filters. Vertex shader:
+#version 330 core
+layout (location = 0) in vec3 position;
+
+uniform mat4 model;
+uniform mat4 view;        // в shadow-pass = lightView
+uniform mat4 projection;  // в shadow-pass = lightProj
+
+void main()
+{
+    gl_Position = projection * view * model * vec4(position, 1.0);
+}
+
+Fragment shader:
+#version 330 core
+
+// depth-only проход: цвет не пишем, глубина пишется автоматически.
+void main()
+{
+}
+
+Built shader with filters. Vertex shader:
+#version 330 core
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 normal;
+layout (location = 2) in vec2 texCoord0;
+layout (location = 3) in vec3 tangent;
+layout (location = 4) in vec2 texCoord1;
+layout (location = 5) in vec4 color;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+out vec3 FragPos;
+out vec3 Normal;
+out vec2 TexCoords0;
+out vec2 TexCoords1;
+out mat3 TBN;
+out vec4 Color;
+
+void main()
+{
+    gl_Position = projection * view * model * vec4(position, 1.0f);
+    FragPos = vec3(model * vec4(position, 1.0f));
+
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    vec3 N = normalize(normalMatrix * normal);
+    vec3 T = normalize(normalMatrix * tangent);
+    T      = normalize(T - dot(T, N) * N);
+    vec3 B = cross(N, T);
+    TBN    = mat3(T, B, N);
+
+    Normal    = N;
+
+    TexCoords0 = texCoord0;
+    TexCoords1 = texCoord1;
+    Color      = color;
+}
+Fragment shader:
+#version 330 core
+
+uniform vec4 uColor;
+
+out vec4 color;
+void main()
+{
+	color = uColor;
+}
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/materials/worn_pavement_uddhdb1fw_4k/Worn_Pavement_uddhdb1fw_4K_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/materials/worn_pavement_uddhdb1fw_4k/Worn_Pavement_uddhdb1fw_4K_Normal.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/materials/worn_pavement_uddhdb1fw_4k/Worn_Pavement_uddhdb1fw_4K_Roughness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/materials/worn_pavement_uddhdb1fw_4k/Worn_Pavement_uddhdb1fw_4K_AO.jpg with result: Image loaded as an OpenGL texture
+Built shader with filters. Vertex shader:
+#version 330 core
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 normal;
+layout (location = 2) in vec2 texCoord0;
+layout (location = 3) in vec3 tangent;
+layout (location = 4) in vec2 texCoord1;
+layout (location = 5) in vec4 color;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+out vec3 FragPos;
+out vec3 Normal;
+out vec2 TexCoords0;
+out vec2 TexCoords1;
+out mat3 TBN;
+out vec4 Color;
+
+void main()
+{
+    gl_Position = projection * view * model * vec4(position, 1.0f);
+    FragPos = vec3(model * vec4(position, 1.0f));
+
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    vec3 N = normalize(normalMatrix * normal);
+    vec3 T = normalize(normalMatrix * tangent);
+    T      = normalize(T - dot(T, N) * N);
+    vec3 B = cross(N, T);
+    TBN    = mat3(T, B, N);
+
+    Normal    = N;
+
+    TexCoords0 = texCoord0;
+    TexCoords1 = texCoord1;
+    Color      = color;
+}
+Fragment shader:
+#version 330 core
+
+out vec4 color;
+
+in vec3 FragPos;
+in vec3 Normal;
+in vec2 TexCoords0;
+in vec2 TexCoords1;
+in mat3 TBN;
+in vec4 Color;
+
+uniform vec4 uBaseColor;
+uniform float uRoughnessScale; // множитель к R (1.0 = без изменений)
+
+
+const float PI = 3.14159265359;
+
+struct DirLight { vec3 direction; vec3 color; };
+
+uniform vec3 viewPos;
+uniform DirLight dirLight;
+uniform vec3 ambientLight; // плоский заполняющий свет окружения (до IBL)
+
+float DistributionGGX(float NdotH, float roughness) {
+    float a  = roughness * roughness;
+    float a2 = a * a;
+    float d  = NdotH * NdotH * (a2 - 1.0) + 1.0;
+    return a2 / (PI * d * d);
+}
+
+float GeometrySchlickGGX(float NdotX, float k) {
+    return NdotX / (NdotX * (1.0 - k) + k);
+}
+
+float GeometrySmith(float NdotV, float NdotL, float roughness) {
+    float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;  // k для direct
+    return GeometrySchlickGGX(NdotV, k) * GeometrySchlickGGX(NdotL, k);
+}
+
+vec3 FresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// учитывает roughness — для ambient/IBL (на шероховатых поверхностях fresnel слабее)
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+uniform bool        uHasIBL;
+uniform samplerCube irradianceMap;   // diffuse IBL
+uniform samplerCube prefilterMap;    // specular IBL (mip = roughness)
+uniform sampler2D   brdfLUT;         // scale/bias для F0
+uniform float       uMaxReflectionLod;
+
+uniform bool      uHasShadows;
+uniform sampler2D shadowMap;
+uniform mat4      uLightSpaceMatrix;
+uniform float     uShadowStrength;  // насколько тень дополнительно гасит ambient/IBL (0..1)
+
+// Доля затенения [0..1] для directional света. PCF 3x3 + slope-scaled bias.
+float ShadowFactor(vec3 fragPos, vec3 N, vec3 L) {
+    vec4 fragPosLS = uLightSpaceMatrix * vec4(fragPos, 1.0);
+    vec3 proj = fragPosLS.xyz / fragPosLS.w;
+    proj = proj * 0.5 + 0.5;               // [-1,1] -> [0,1]
+    if (proj.z > 1.0) return 0.0;          // за far-плоскостью света тени нет
+
+    float bias = max(0.0015 * (1.0 - dot(N, L)), 0.0005);
+    float currentDepth = proj.z;
+
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
+    for (int x = -1; x <= 1; ++x) {
+        for (int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(shadowMap, proj.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth - bias > pcfDepth) ? 1.0 : 0.0;
+        }
+    }
+    return shadow / 9.0;
+}
+
+
+uniform sampler2D uSampler0;
+vec4 textureMapFilter0()
+{
+    return texture(uSampler0, TexCoords0);
+}
+
+uniform sampler2D uSampler1;
+vec3 normalMapFilter1()
+{
+    vec3 ts = texture(uSampler1, TexCoords0).rgb * 2.0 - 1.0;
+    return normalize(TBN * ts);
+}
+
+uniform sampler2D uSampler2;
+vec4 textureMapFilter2()
+{
+    return texture(uSampler2, TexCoords0);
+}
+
+uniform sampler2D uSampler3;
+vec4 textureMapFilter3()
+{
+    return texture(uSampler3, TexCoords0);
+}
+
+// __FRAGMENT_DECLS__
+
+void main()
+{
+    vec3 BASE_COLOR    = uBaseColor.rgb;
+    vec3 SPEC_STRENGTH = vec3(1.0);
+    vec3 N             = normalize(Normal);
+    vec3 EMISSIVE      = vec3(0.0);
+
+    float M  = 0.0;
+    float R  = 0.5;
+    float AO = 1.0;
+
+    BASE_COLOR *= textureMapFilter0().rgb;
+    // __APPLY_BASE_COLOR_FILTERS__
+    // __APPLY_SPECULAR_FILTERS__
+    N = normalMapFilter1();
+    // __APPLY_NORMAL_FILTERS__
+
+    // __APPLY_METALLIC_FILTERS__
+    R = textureMapFilter2().r;
+    // __APPLY_ROUGHNESS_FILTERS__
+    R = clamp(R * uRoughnessScale, 0.0, 1.0);
+    AO = textureMapFilter3().r;
+    // __APPLY_AO_FILTERS__
+
+
+    vec3 V = normalize(viewPos - FragPos);
+    vec3 L = normalize(-dirLight.direction);
+    vec3 H = normalize(V + L);
+
+
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotH = max(dot(N, H), 0.0);
+    float HdotV = max(dot(H, V), 0.0);
+
+    vec3 F0 = mix(vec3(0.04), BASE_COLOR, M);
+
+    float D = DistributionGGX(NdotH, R);
+    float G = GeometrySmith(NdotV, NdotL, R);
+    vec3  F = FresnelSchlick(HdotV, F0);
+
+    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.0001);
+
+    vec3 kD = (vec3(1.0) - F) * (1.0 - M);
+    vec3 diffuse = kD * BASE_COLOR / PI;
+
+    vec3 radiance = dirLight.color;
+    // Тень гасит только прямой свет; ambient/IBL не затрагивается.
+    float shadow = uHasShadows ? ShadowFactor(FragPos, N, L) : 0.0;
+    vec3 Lo = (diffuse + specular) * radiance * NdotL * (1.0 - shadow);
+
+    vec3 ambient;
+    if (uHasIBL) {
+        // Indirect lighting из окружения: diffuse irradiance + specular reflection.
+        vec3 Famb = FresnelSchlickRoughness(NdotV, F0, R);
+        vec3 kDamb = (vec3(1.0) - Famb) * (1.0 - M);
+
+        vec3 irradiance = texture(irradianceMap, N).rgb;
+        vec3 diffuseIBL = irradiance * BASE_COLOR;
+
+        vec3 Rrefl = reflect(-V, N);
+        vec3 prefiltered = textureLod(prefilterMap, Rrefl, R * uMaxReflectionLod).rgb;
+        vec2 brdf = texture(brdfLUT, vec2(NdotV, R)).rg;
+        vec3 specularIBL = prefiltered * (Famb * brdf.x + brdf.y);
+
+        ambient = (kDamb * diffuseIBL + specularIBL) * AO;
+    } else {
+        // Плоский ambient-заглушка. (1 - M) убирает диффузный ambient у металлов.
+        ambient = ambientLight * BASE_COLOR * (1.0 - M) * AO;
+    }
+    // Тень дополнительно притеняет ambient (контраст). uShadowStrength=0 — выкл.
+    ambient *= (1.0 - shadow * uShadowStrength);
+    vec3 outColor = ambient + Lo + EMISSIVE;
+
+    outColor = outColor / (outColor + vec3(1.0));   // Reinhard
+    outColor = pow(outColor, vec3(1.0 / 2.2));        // gamma
+    color = vec4(outColor, 1.0);
+
+
+
+
+    // __APPLY_OVERLAY_FILTERS__
+}
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/body_one_mat_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/body_one_mat_Normal.png with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/body_one_mat_Metallic.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/body_one_mat_Roughness.jpg with result: Image loaded as an OpenGL texture
+Built shader with filters. Vertex shader:
+#version 330 core
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 normal;
+layout (location = 2) in vec2 texCoord0;
+layout (location = 3) in vec3 tangent;
+layout (location = 4) in vec2 texCoord1;
+layout (location = 5) in vec4 color;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+out vec3 FragPos;
+out vec3 Normal;
+out vec2 TexCoords0;
+out vec2 TexCoords1;
+out mat3 TBN;
+out vec4 Color;
+
+void main()
+{
+    gl_Position = projection * view * model * vec4(position, 1.0f);
+    FragPos = vec3(model * vec4(position, 1.0f));
+
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    vec3 N = normalize(normalMatrix * normal);
+    vec3 T = normalize(normalMatrix * tangent);
+    T      = normalize(T - dot(T, N) * N);
+    vec3 B = cross(N, T);
+    TBN    = mat3(T, B, N);
+
+    Normal    = N;
+
+    TexCoords0 = texCoord0;
+    TexCoords1 = texCoord1;
+    Color      = color;
+}
+Fragment shader:
+#version 330 core
+
+out vec4 color;
+
+in vec3 FragPos;
+in vec3 Normal;
+in vec2 TexCoords0;
+in vec2 TexCoords1;
+in mat3 TBN;
+in vec4 Color;
+
+uniform vec4 uBaseColor;
+uniform float uRoughnessScale; // множитель к R (1.0 = без изменений)
+
+
+const float PI = 3.14159265359;
+
+struct DirLight { vec3 direction; vec3 color; };
+
+uniform vec3 viewPos;
+uniform DirLight dirLight;
+uniform vec3 ambientLight; // плоский заполняющий свет окружения (до IBL)
+
+float DistributionGGX(float NdotH, float roughness) {
+    float a  = roughness * roughness;
+    float a2 = a * a;
+    float d  = NdotH * NdotH * (a2 - 1.0) + 1.0;
+    return a2 / (PI * d * d);
+}
+
+float GeometrySchlickGGX(float NdotX, float k) {
+    return NdotX / (NdotX * (1.0 - k) + k);
+}
+
+float GeometrySmith(float NdotV, float NdotL, float roughness) {
+    float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;  // k для direct
+    return GeometrySchlickGGX(NdotV, k) * GeometrySchlickGGX(NdotL, k);
+}
+
+vec3 FresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// учитывает roughness — для ambient/IBL (на шероховатых поверхностях fresnel слабее)
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+uniform bool        uHasIBL;
+uniform samplerCube irradianceMap;   // diffuse IBL
+uniform samplerCube prefilterMap;    // specular IBL (mip = roughness)
+uniform sampler2D   brdfLUT;         // scale/bias для F0
+uniform float       uMaxReflectionLod;
+
+uniform bool      uHasShadows;
+uniform sampler2D shadowMap;
+uniform mat4      uLightSpaceMatrix;
+uniform float     uShadowStrength;  // насколько тень дополнительно гасит ambient/IBL (0..1)
+
+// Доля затенения [0..1] для directional света. PCF 3x3 + slope-scaled bias.
+float ShadowFactor(vec3 fragPos, vec3 N, vec3 L) {
+    vec4 fragPosLS = uLightSpaceMatrix * vec4(fragPos, 1.0);
+    vec3 proj = fragPosLS.xyz / fragPosLS.w;
+    proj = proj * 0.5 + 0.5;               // [-1,1] -> [0,1]
+    if (proj.z > 1.0) return 0.0;          // за far-плоскостью света тени нет
+
+    float bias = max(0.0015 * (1.0 - dot(N, L)), 0.0005);
+    float currentDepth = proj.z;
+
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
+    for (int x = -1; x <= 1; ++x) {
+        for (int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(shadowMap, proj.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth - bias > pcfDepth) ? 1.0 : 0.0;
+        }
+    }
+    return shadow / 9.0;
+}
+
+
+uniform sampler2D uSampler0;
+vec4 textureMapFilter0()
+{
+    return texture(uSampler0, TexCoords0);
+}
+
+uniform sampler2D uSampler1;
+vec3 normalMapFilter1()
+{
+    vec3 ts = texture(uSampler1, TexCoords0).rgb * 2.0 - 1.0;
+    return normalize(TBN * ts);
+}
+
+uniform sampler2D uSampler2;
+vec4 textureMapFilter2()
+{
+    return texture(uSampler2, TexCoords0);
+}
+
+uniform sampler2D uSampler3;
+vec4 textureMapFilter3()
+{
+    return texture(uSampler3, TexCoords0);
+}
+
+// __FRAGMENT_DECLS__
+
+void main()
+{
+    vec3 BASE_COLOR    = uBaseColor.rgb;
+    vec3 SPEC_STRENGTH = vec3(1.0);
+    vec3 N             = normalize(Normal);
+    vec3 EMISSIVE      = vec3(0.0);
+
+    float M  = 0.0;
+    float R  = 0.5;
+    float AO = 1.0;
+
+    BASE_COLOR *= textureMapFilter0().rgb;
+    // __APPLY_BASE_COLOR_FILTERS__
+    // __APPLY_SPECULAR_FILTERS__
+    N = normalMapFilter1();
+    // __APPLY_NORMAL_FILTERS__
+
+    M = textureMapFilter2().r;
+    // __APPLY_METALLIC_FILTERS__
+    R = textureMapFilter3().r;
+    // __APPLY_ROUGHNESS_FILTERS__
+    R = clamp(R * uRoughnessScale, 0.0, 1.0);
+    // __APPLY_AO_FILTERS__
+
+
+    vec3 V = normalize(viewPos - FragPos);
+    vec3 L = normalize(-dirLight.direction);
+    vec3 H = normalize(V + L);
+
+
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotH = max(dot(N, H), 0.0);
+    float HdotV = max(dot(H, V), 0.0);
+
+    vec3 F0 = mix(vec3(0.04), BASE_COLOR, M);
+
+    float D = DistributionGGX(NdotH, R);
+    float G = GeometrySmith(NdotV, NdotL, R);
+    vec3  F = FresnelSchlick(HdotV, F0);
+
+    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.0001);
+
+    vec3 kD = (vec3(1.0) - F) * (1.0 - M);
+    vec3 diffuse = kD * BASE_COLOR / PI;
+
+    vec3 radiance = dirLight.color;
+    // Тень гасит только прямой свет; ambient/IBL не затрагивается.
+    float shadow = uHasShadows ? ShadowFactor(FragPos, N, L) : 0.0;
+    vec3 Lo = (diffuse + specular) * radiance * NdotL * (1.0 - shadow);
+
+    vec3 ambient;
+    if (uHasIBL) {
+        // Indirect lighting из окружения: diffuse irradiance + specular reflection.
+        vec3 Famb = FresnelSchlickRoughness(NdotV, F0, R);
+        vec3 kDamb = (vec3(1.0) - Famb) * (1.0 - M);
+
+        vec3 irradiance = texture(irradianceMap, N).rgb;
+        vec3 diffuseIBL = irradiance * BASE_COLOR;
+
+        vec3 Rrefl = reflect(-V, N);
+        vec3 prefiltered = textureLod(prefilterMap, Rrefl, R * uMaxReflectionLod).rgb;
+        vec2 brdf = texture(brdfLUT, vec2(NdotV, R)).rg;
+        vec3 specularIBL = prefiltered * (Famb * brdf.x + brdf.y);
+
+        ambient = (kDamb * diffuseIBL + specularIBL) * AO;
+    } else {
+        // Плоский ambient-заглушка. (1 - M) убирает диффузный ambient у металлов.
+        ambient = ambientLight * BASE_COLOR * (1.0 - M) * AO;
+    }
+    // Тень дополнительно притеняет ambient (контраст). uShadowStrength=0 — выкл.
+    ambient *= (1.0 - shadow * uShadowStrength);
+    vec3 outColor = ambient + Lo + EMISSIVE;
+
+    outColor = outColor / (outColor + vec3(1.0));   // Reinhard
+    outColor = pow(outColor, vec3(1.0 / 2.2));        // gamma
+    color = vec4(outColor, 1.0);
+
+
+
+
+    // __APPLY_OVERLAY_FILTERS__
+}
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/body_two_mat_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/body_two_mat_Normal.png with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/body_two_mat_Metallic.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/body_two_mat_Roughness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/interior_one_mat_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/interior_one_mat_Normal.png with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/interior_one_mat_Metallic.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/interior_one_mat_Roughness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/interior_two_mat_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/interior_two_mat_Normal.png with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/interior_two_mat_Metallic.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/interior_two_mat_Roughness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/wheels_mat_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/wheels_mat_Normal.png with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/wheels_mat_Metallic.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/wheels_mat_Roughness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/details_mat_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/details_mat_Normal.png with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/details_mat_Metallic.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/details_mat_Roughness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/glass_mat_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/glass_mat_Normal.png with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/glass_mat_Metallic.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/glass_mat_Roughness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/orion-skylark-gt/Orion Skylark GT.fbm/panels_mat_BaseColor.jpg with result: Image loaded as an OpenGL texture
+Built shader with filters. Vertex shader:
+#version 330 core
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 normal;
+layout (location = 2) in vec2 texCoord0;
+layout (location = 3) in vec3 tangent;
+layout (location = 4) in vec2 texCoord1;
+layout (location = 5) in vec4 color;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+out vec3 FragPos;
+out vec3 Normal;
+out vec2 TexCoords0;
+out vec2 TexCoords1;
+out mat3 TBN;
+out vec4 Color;
+
+void main()
+{
+    gl_Position = projection * view * model * vec4(position, 1.0f);
+    FragPos = vec3(model * vec4(position, 1.0f));
+
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    vec3 N = normalize(normalMatrix * normal);
+    vec3 T = normalize(normalMatrix * tangent);
+    T      = normalize(T - dot(T, N) * N);
+    vec3 B = cross(N, T);
+    TBN    = mat3(T, B, N);
+
+    Normal    = N;
+
+    TexCoords0 = texCoord0;
+    TexCoords1 = texCoord1;
+    Color      = color;
+}
+Fragment shader:
+#version 330 core
+
+out vec4 color;
+
+in vec3 FragPos;
+in vec3 Normal;
+in vec2 TexCoords0;
+in vec2 TexCoords1;
+in mat3 TBN;
+in vec4 Color;
+
+uniform vec4 uBaseColor;
+uniform float uRoughnessScale; // множитель к R (1.0 = без изменений)
+
+
+const float PI = 3.14159265359;
+
+struct DirLight { vec3 direction; vec3 color; };
+
+uniform vec3 viewPos;
+uniform DirLight dirLight;
+uniform vec3 ambientLight; // плоский заполняющий свет окружения (до IBL)
+
+float DistributionGGX(float NdotH, float roughness) {
+    float a  = roughness * roughness;
+    float a2 = a * a;
+    float d  = NdotH * NdotH * (a2 - 1.0) + 1.0;
+    return a2 / (PI * d * d);
+}
+
+float GeometrySchlickGGX(float NdotX, float k) {
+    return NdotX / (NdotX * (1.0 - k) + k);
+}
+
+float GeometrySmith(float NdotV, float NdotL, float roughness) {
+    float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;  // k для direct
+    return GeometrySchlickGGX(NdotV, k) * GeometrySchlickGGX(NdotL, k);
+}
+
+vec3 FresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// учитывает roughness — для ambient/IBL (на шероховатых поверхностях fresnel слабее)
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+uniform bool        uHasIBL;
+uniform samplerCube irradianceMap;   // diffuse IBL
+uniform samplerCube prefilterMap;    // specular IBL (mip = roughness)
+uniform sampler2D   brdfLUT;         // scale/bias для F0
+uniform float       uMaxReflectionLod;
+
+uniform bool      uHasShadows;
+uniform sampler2D shadowMap;
+uniform mat4      uLightSpaceMatrix;
+uniform float     uShadowStrength;  // насколько тень дополнительно гасит ambient/IBL (0..1)
+
+// Доля затенения [0..1] для directional света. PCF 3x3 + slope-scaled bias.
+float ShadowFactor(vec3 fragPos, vec3 N, vec3 L) {
+    vec4 fragPosLS = uLightSpaceMatrix * vec4(fragPos, 1.0);
+    vec3 proj = fragPosLS.xyz / fragPosLS.w;
+    proj = proj * 0.5 + 0.5;               // [-1,1] -> [0,1]
+    if (proj.z > 1.0) return 0.0;          // за far-плоскостью света тени нет
+
+    float bias = max(0.0015 * (1.0 - dot(N, L)), 0.0005);
+    float currentDepth = proj.z;
+
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
+    for (int x = -1; x <= 1; ++x) {
+        for (int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(shadowMap, proj.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth - bias > pcfDepth) ? 1.0 : 0.0;
+        }
+    }
+    return shadow / 9.0;
+}
+
+
+uniform sampler2D uSampler0;
+vec4 textureMapFilter0()
+{
+    return texture(uSampler0, TexCoords0);
+}
+
+// __FRAGMENT_DECLS__
+
+void main()
+{
+    vec3 BASE_COLOR    = uBaseColor.rgb;
+    vec3 SPEC_STRENGTH = vec3(1.0);
+    vec3 N             = normalize(Normal);
+    vec3 EMISSIVE      = vec3(0.0);
+
+    float M  = 0.0;
+    float R  = 0.5;
+    float AO = 1.0;
+
+    BASE_COLOR *= textureMapFilter0().rgb;
+    // __APPLY_BASE_COLOR_FILTERS__
+    // __APPLY_SPECULAR_FILTERS__
+    // __APPLY_NORMAL_FILTERS__
+
+    // __APPLY_METALLIC_FILTERS__
+    // __APPLY_ROUGHNESS_FILTERS__
+    R = clamp(R * uRoughnessScale, 0.0, 1.0);
+    // __APPLY_AO_FILTERS__
+
+
+    vec3 V = normalize(viewPos - FragPos);
+    vec3 L = normalize(-dirLight.direction);
+    vec3 H = normalize(V + L);
+
+
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotH = max(dot(N, H), 0.0);
+    float HdotV = max(dot(H, V), 0.0);
+
+    vec3 F0 = mix(vec3(0.04), BASE_COLOR, M);
+
+    float D = DistributionGGX(NdotH, R);
+    float G = GeometrySmith(NdotV, NdotL, R);
+    vec3  F = FresnelSchlick(HdotV, F0);
+
+    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.0001);
+
+    vec3 kD = (vec3(1.0) - F) * (1.0 - M);
+    vec3 diffuse = kD * BASE_COLOR / PI;
+
+    vec3 radiance = dirLight.color;
+    // Тень гасит только прямой свет; ambient/IBL не затрагивается.
+    float shadow = uHasShadows ? ShadowFactor(FragPos, N, L) : 0.0;
+    vec3 Lo = (diffuse + specular) * radiance * NdotL * (1.0 - shadow);
+
+    vec3 ambient;
+    if (uHasIBL) {
+        // Indirect lighting из окружения: diffuse irradiance + specular reflection.
+        vec3 Famb = FresnelSchlickRoughness(NdotV, F0, R);
+        vec3 kDamb = (vec3(1.0) - Famb) * (1.0 - M);
+
+        vec3 irradiance = texture(irradianceMap, N).rgb;
+        vec3 diffuseIBL = irradiance * BASE_COLOR;
+
+        vec3 Rrefl = reflect(-V, N);
+        vec3 prefiltered = textureLod(prefilterMap, Rrefl, R * uMaxReflectionLod).rgb;
+        vec2 brdf = texture(brdfLUT, vec2(NdotV, R)).rg;
+        vec3 specularIBL = prefiltered * (Famb * brdf.x + brdf.y);
+
+        ambient = (kDamb * diffuseIBL + specularIBL) * AO;
+    } else {
+        // Плоский ambient-заглушка. (1 - M) убирает диффузный ambient у металлов.
+        ambient = ambientLight * BASE_COLOR * (1.0 - M) * AO;
+    }
+    // Тень дополнительно притеняет ambient (контраст). uShadowStrength=0 — выкл.
+    ambient *= (1.0 - shadow * uShadowStrength);
+    vec3 outColor = ambient + Lo + EMISSIVE;
+
+    outColor = outColor / (outColor + vec3(1.0));   // Reinhard
+    outColor = pow(outColor, vec3(1.0 / 2.2));        // gamma
+    color = vec4(outColor, 1.0);
+
+
+
+
+    // __APPLY_OVERLAY_FILTERS__
+}
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High_4K_BaseColor.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High_4K_Specular.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High_4K_Normal.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High_4K_Metalness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High_4K_Roughness.jpg with result: Image loaded as an OpenGL texture
+[TextureManager::TextureFromFile] Loaded texture from file: ../assets/models/military_trenches_storage_crate_wood_worn_01_zjkocdjtq_high/Military_Trenches_Storage_Crate_Wood_Worn_01_zjkocdjtq_High_4K_AO.jpg with result: Image loaded as an OpenGL texture
+Built shader with filters. Vertex shader:
+#version 330 core
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 normal;
+layout (location = 2) in vec2 texCoord0;
+layout (location = 3) in vec3 tangent;
+layout (location = 4) in vec2 texCoord1;
+layout (location = 5) in vec4 color;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+out vec3 FragPos;
+out vec3 Normal;
+out vec2 TexCoords0;
+out vec2 TexCoords1;
+out mat3 TBN;
+out vec4 Color;
+
+void main()
+{
+    gl_Position = projection * view * model * vec4(position, 1.0f);
+    FragPos = vec3(model * vec4(position, 1.0f));
+
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    vec3 N = normalize(normalMatrix * normal);
+    vec3 T = normalize(normalMatrix * tangent);
+    T      = normalize(T - dot(T, N) * N);
+    vec3 B = cross(N, T);
+    TBN    = mat3(T, B, N);
+
+    Normal    = N;
+
+    TexCoords0 = texCoord0;
+    TexCoords1 = texCoord1;
+    Color      = color;
+}
+Fragment shader:
+#version 330 core
+
+out vec4 color;
+
+in vec3 FragPos;
+in vec3 Normal;
+in vec2 TexCoords0;
+in vec2 TexCoords1;
+in mat3 TBN;
+in vec4 Color;
+
+uniform vec4 uBaseColor;
+uniform float uRoughnessScale; // множитель к R (1.0 = без изменений)
+
+
+const float PI = 3.14159265359;
+
+struct DirLight { vec3 direction; vec3 color; };
+
+uniform vec3 viewPos;
+uniform DirLight dirLight;
+uniform vec3 ambientLight; // плоский заполняющий свет окружения (до IBL)
+
+float DistributionGGX(float NdotH, float roughness) {
+    float a  = roughness * roughness;
+    float a2 = a * a;
+    float d  = NdotH * NdotH * (a2 - 1.0) + 1.0;
+    return a2 / (PI * d * d);
+}
+
+float GeometrySchlickGGX(float NdotX, float k) {
+    return NdotX / (NdotX * (1.0 - k) + k);
+}
+
+float GeometrySmith(float NdotV, float NdotL, float roughness) {
+    float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;  // k для direct
+    return GeometrySchlickGGX(NdotV, k) * GeometrySchlickGGX(NdotL, k);
+}
+
+vec3 FresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// учитывает roughness — для ambient/IBL (на шероховатых поверхностях fresnel слабее)
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+uniform bool        uHasIBL;
+uniform samplerCube irradianceMap;   // diffuse IBL
+uniform samplerCube prefilterMap;    // specular IBL (mip = roughness)
+uniform sampler2D   brdfLUT;         // scale/bias для F0
+uniform float       uMaxReflectionLod;
+
+uniform bool      uHasShadows;
+uniform sampler2D shadowMap;
+uniform mat4      uLightSpaceMatrix;
+uniform float     uShadowStrength;  // насколько тень дополнительно гасит ambient/IBL (0..1)
+
+// Доля затенения [0..1] для directional света. PCF 3x3 + slope-scaled bias.
+float ShadowFactor(vec3 fragPos, vec3 N, vec3 L) {
+    vec4 fragPosLS = uLightSpaceMatrix * vec4(fragPos, 1.0);
+    vec3 proj = fragPosLS.xyz / fragPosLS.w;
+    proj = proj * 0.5 + 0.5;               // [-1,1] -> [0,1]
+    if (proj.z > 1.0) return 0.0;          // за far-плоскостью света тени нет
+
+    float bias = max(0.0015 * (1.0 - dot(N, L)), 0.0005);
+    float currentDepth = proj.z;
+
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
+    for (int x = -1; x <= 1; ++x) {
+        for (int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(shadowMap, proj.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth - bias > pcfDepth) ? 1.0 : 0.0;
+        }
+    }
+    return shadow / 9.0;
+}
+
+
+uniform sampler2D uSampler0;
+vec4 textureMapFilter0()
+{
+    return texture(uSampler0, TexCoords0);
+}
+
+uniform sampler2D uSampler1;
+vec4 textureMapFilter1()
+{
+    return texture(uSampler1, TexCoords0);
+}
+
+uniform sampler2D uSampler2;
+vec3 normalMapFilter2()
+{
+    vec3 ts = texture(uSampler2, TexCoords0).rgb * 2.0 - 1.0;
+    return normalize(TBN * ts);
+}
+
+uniform sampler2D uSampler3;
+vec4 textureMapFilter3()
+{
+    return texture(uSampler3, TexCoords0);
+}
+
+uniform sampler2D uSampler4;
+vec4 textureMapFilter4()
+{
+    return texture(uSampler4, TexCoords0);
+}
+
+uniform sampler2D uSampler5;
+vec4 textureMapFilter5()
+{
+    return texture(uSampler5, TexCoords0);
+}
+
+// __FRAGMENT_DECLS__
+
+void main()
+{
+    vec3 BASE_COLOR    = uBaseColor.rgb;
+    vec3 SPEC_STRENGTH = vec3(1.0);
+    vec3 N             = normalize(Normal);
+    vec3 EMISSIVE      = vec3(0.0);
+
+    float M  = 0.0;
+    float R  = 0.5;
+    float AO = 1.0;
+
+    BASE_COLOR *= textureMapFilter0().rgb;
+    // __APPLY_BASE_COLOR_FILTERS__
+    SPEC_STRENGTH *= textureMapFilter1().rgb;
+    // __APPLY_SPECULAR_FILTERS__
+    N = normalMapFilter2();
+    // __APPLY_NORMAL_FILTERS__
+
+    M = textureMapFilter3().r;
+    // __APPLY_METALLIC_FILTERS__
+    R = textureMapFilter4().r;
+    // __APPLY_ROUGHNESS_FILTERS__
+    R = clamp(R * uRoughnessScale, 0.0, 1.0);
+    AO = textureMapFilter5().r;
+    // __APPLY_AO_FILTERS__
+
+
+    vec3 V = normalize(viewPos - FragPos);
+    vec3 L = normalize(-dirLight.direction);
+    vec3 H = normalize(V + L);
+
+
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotH = max(dot(N, H), 0.0);
+    float HdotV = max(dot(H, V), 0.0);
+
+    vec3 F0 = mix(vec3(0.04), BASE_COLOR, M);
+
+    float D = DistributionGGX(NdotH, R);
+    float G = GeometrySmith(NdotV, NdotL, R);
+    vec3  F = FresnelSchlick(HdotV, F0);
+
+    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 0.0001);
+
+    vec3 kD = (vec3(1.0) - F) * (1.0 - M);
+    vec3 diffuse = kD * BASE_COLOR / PI;
+
+    vec3 radiance = dirLight.color;
+    // Тень гасит только прямой свет; ambient/IBL не затрагивается.
+    float shadow = uHasShadows ? ShadowFactor(FragPos, N, L) : 0.0;
+    vec3 Lo = (diffuse + specular) * radiance * NdotL * (1.0 - shadow);
+
+    vec3 ambient;
+    if (uHasIBL) {
+        // Indirect lighting из окружения: diffuse irradiance + specular reflection.
+        vec3 Famb = FresnelSchlickRoughness(NdotV, F0, R);
+        vec3 kDamb = (vec3(1.0) - Famb) * (1.0 - M);
+
+        vec3 irradiance = texture(irradianceMap, N).rgb;
+        vec3 diffuseIBL = irradiance * BASE_COLOR;
+
+        vec3 Rrefl = reflect(-V, N);
+        vec3 prefiltered = textureLod(prefilterMap, Rrefl, R * uMaxReflectionLod).rgb;
+        vec2 brdf = texture(brdfLUT, vec2(NdotV, R)).rg;
+        vec3 specularIBL = prefiltered * (Famb * brdf.x + brdf.y);
+
+        ambient = (kDamb * diffuseIBL + specularIBL) * AO;
+    } else {
+        // Плоский ambient-заглушка. (1 - M) убирает диффузный ambient у металлов.
+        ambient = ambientLight * BASE_COLOR * (1.0 - M) * AO;
+    }
+    // Тень дополнительно притеняет ambient (контраст). uShadowStrength=0 — выкл.
+    ambient *= (1.0 - shadow * uShadowStrength);
+    vec3 outColor = ambient + Lo + EMISSIVE;
+
+    outColor = outColor / (outColor + vec3(1.0));   // Reinhard
+    outColor = pow(outColor, vec3(1.0 / 2.2));        // gamma
+    color = vec4(outColor, 1.0);
+
+
+
+
+    // __APPLY_OVERLAY_FILTERS__
+}
+INVALID_ENUM | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 389  333
+screen800  600
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 367  303
+screen800  600
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 434  452
+screen800  600
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 465  284
+screen800  600
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 419  319
+screen800  600
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 421  241
+screen800  600
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 301  357
+screen800  600
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 251  330
+screen800  600
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)
+mouseXY 864  852
+screen1920  1129
+R: 204
+G: 204
+B: 204
+
+ObjectId = 13421772
+INVALID_OPERATION | D:\projects\simple3d\src\Shader.cpp (9)

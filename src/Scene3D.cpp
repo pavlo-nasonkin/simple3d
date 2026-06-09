@@ -14,6 +14,10 @@
 #include "render/IBLBaker.h"
 #include "resources/TextureCube.h"
 #include "resources/HDRLoader.h"
+#include "utils/AssetPaths.h"
+#include "behaviours/LightComponent.h"
+
+#include <functional>
 
 Scene3D::Scene3D() :
     _lightPosition({ 5.2f, 5.0f, 5.0 }),
@@ -38,49 +42,67 @@ void Scene3D::InitEnvironment()
 
 }
 
-void Scene3D::Update()
+void Scene3D::Update(float deltaTime)
 {
-	//TODO update animations etc
+	// Тик логики: компоненты (Behaviour) всего поддерева сцены.
+	// TODO: сюда же обновление анимаций и пр.
+	UpdateSubtree(deltaTime);
 }
 
-void Scene3D::Render(const RenderContext& ctx, MaterialBase* material /*= nullptr*/)
+DirectionalLightComponent* Scene3D::FindActiveDirectionalLight()
 {
-	RenderContext mainCtx = ctx;
-
-	// Shadow-pass: рендер глубины сцены из точки зрения солнца (только в обычном проходе).
-	if (_shadowMap && _depthMaterial && !material) {
-		const glm::mat4 lightSpace =
-			ShadowMap::ComputeLightSpaceMatrix(_dirLightDirection, _shadowCenter, _shadowRadius);
-
-		RenderContext shadowCtx = ctx;
-		shadowCtx.view = glm::mat4(1.0f);     // view*projection = lightSpace * I
-		shadowCtx.projection = lightSpace;
-		shadowCtx.shadowPass = true;
-
-		_shadowMap->Begin();
-		Pivot3D::Render(shadowCtx, _depthMaterial.get());
-		_shadowMap->End();
-
-		mainCtx.lightSpaceMatrix = lightSpace;
-		mainCtx.shadowMap = _shadowMap->DepthTexture();
-		mainCtx.hasShadows = true;
+	DirectionalLightComponent* found = nullptr;
+	std::function<void(Pivot3D&)> visit = [&](Pivot3D& node) {
+		if (found) return;
+		for (const auto& behaviour : node.GetBehaviours()) {
+			if (auto* light = dynamic_cast<DirectionalLightComponent*>(behaviour.get())) {
+				if (light->IsEnabled()) { found = light; return; }
+			}
+		}
+		for (const auto& child : node.Children()) {
+			if (found) return;
+			visit(*child);
+		}
+	};
+	for (const auto& child : Children()) {
+		if (found) break;
+		visit(*child);
 	}
+	return found;
+}
 
-	PrepareRender();
-	Pivot3D::Render(mainCtx, material);
-	// Skybox рисуется последним и только в обычном цветовом проходе
-	// (не в id-pass'е ObjectSelector'а, где material != nullptr).
-	if (_skybox && !material) {
-		_skybox->Render(mainCtx.view, mainCtx.projection);
-	}
-    PostRender();
+glm::vec3 Scene3D::GetEffectiveDirLightDirection() const
+{
+	return _activeDirLight ? _activeDirLight->GetWorldDirection() : _dirLightDirection;
+}
+
+glm::vec3 Scene3D::GetEffectiveDirLightColor() const
+{
+	return _activeDirLight ? _activeDirLight->GetColor() : _dirLightColor;
+}
+
+float Scene3D::GetEffectiveDirLightIntensity() const
+{
+	return _activeDirLight ? _activeDirLight->GetIntensity() : _dirLightIntensity;
+}
+
+glm::vec3 Scene3D::GetEffectiveAmbient() const
+{
+	return _activeDirLight ? _activeDirLight->GetAmbient() : _lightAmbient;
+}
+
+void Scene3D::RefreshActiveLights()
+{
+	// Активный направленный свет ищем заново каждый кадр (без висячих указателей
+	// после загрузки сцены); далее PBR и shadow-pass читают «эффективные» геттеры.
+	_activeDirLight = FindActiveDirectionalLight();
 }
 
 void Scene3D::EnableShadows(int mapSize, float radius)
 {
 	_shadowMap = std::make_shared<ShadowMap>(mapSize);
-	_depthMaterial = std::make_shared<DepthMaterial>("../assets/shaders/depth.vsh",
-	                                                 "../assets/shaders/depth.fsh");
+	_depthMaterial = std::make_shared<DepthMaterial>(AssetPaths::Resolve("shaders/depth.vsh"),
+	                                                 AssetPaths::Resolve("shaders/depth.fsh"));
 	_depthMaterial->Build();
 	_shadowRadius = radius;
 }
@@ -102,17 +124,6 @@ void Scene3D::SetEnvironmentFromHdr(const std::string& path)
 	auto prefiltered = IBLBaker::BakePrefiltered(*cubemap);
 	auto brdfLUT     = IBLBaker::BakeBRDFLUT();
 	SetEnvironment(irradiance, prefiltered, brdfLUT);
-}
-
-void Scene3D::PostRender()
-{
-
-}
-
-void Scene3D::PrepareRender()
-{
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void Scene3D::Init()

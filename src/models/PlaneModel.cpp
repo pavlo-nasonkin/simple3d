@@ -18,6 +18,8 @@
 #include "render/GeometryRegistry.h"
 #include "resources/Texture2D.h"
 #include "resources/TextureManager.h"
+#include "render/MeshRenderer.h"
+#include "utils/AssetPaths.h"
 
 namespace {
 	struct PlaneSlot {
@@ -81,10 +83,10 @@ void PlaneModel::Init()
     AddChild(ProcessMesh());
 }
 
-std::shared_ptr<Mesh> PlaneModel::ProcessMesh()
+std::shared_ptr<Pivot3D> PlaneModel::ProcessMesh()
 {
-	auto mat = std::make_shared<Material3D>("../assets/shaders/shader.vsh",
-														  "../assets/shaders/defaultColorLight.fsh");
+	auto mat = std::make_shared<Material3D>(AssetPaths::Resolve("shaders/shader.vsh"),
+														  AssetPaths::Resolve("shaders/defaultColorLight.fsh"));
 	mat->SetRoughnessScale(_roughnessScale);
 
 	if (_materialDir.empty()) {
@@ -128,9 +130,9 @@ std::shared_ptr<Mesh> PlaneModel::ProcessMesh()
 			return Geometry(VertexLayouts::Standard(), verts, planeIndices);
 		});
 
-	auto mesh = std::make_shared<Mesh>(geometry, mat);
-	mesh->SetName(std::string("Plane") + std::to_string(mesh->GetId()));
-	return mesh;
+	auto node = MeshRenderer::MakeNode(geometry, mat);
+	node->SetName(std::string("Plane") + std::to_string(node->GetId()));
+	return node;
 }
 
 void PlaneModel::SetColor(unsigned int color) {

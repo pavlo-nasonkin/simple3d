@@ -45,8 +45,19 @@ void MouseInput::OnMouseMove(double xPos, double yPos)
 	}
 }
 
+bool MouseInput::IsButtonPressed(int button) const
+{
+	return button >= 0 && button < kMaxButtons && _buttons[button];
+}
+
 void MouseInput::OnMouseButton(int button, int action)
 {
+	// Состояние кнопки трекаем всегда (даже под захватом UI), чтобы отпускание
+	// не «залипало», когда курсор ушёл на панель.
+	if (button >= 0 && button < kMaxButtons) {
+		_buttons[button] = (action != 0); // GLFW_PRESS=1 / GLFW_RELEASE=0
+	}
+
 	if (_mouseCaptured) {
 		return;
 	}
@@ -57,11 +68,19 @@ void MouseInput::OnMouseButton(int button, int action)
 	}
 }
 
+double MouseInput::ConsumeScrollY()
+{
+	const double value = _scrollAccumY;
+	_scrollAccumY = 0.0;
+	return value;
+}
+
 void MouseInput::OnMouseScroll(double xOffset, double yOffset)
 {
 	if (_mouseCaptured) {
 		return;
 	}
+	_scrollAccumY += yOffset; // для поллинга из Behaviour (dolly камеры)
 	auto listCopy = _scrollListeners;
 	for (IMouseListener* listener : listCopy)
 	{

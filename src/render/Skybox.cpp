@@ -6,6 +6,7 @@
 #include "Shader.h"
 #include "materials/ShaderFactory.h"
 #include "resources/TextureCube.h"
+#include "utils/AssetPaths.h"
 
 namespace {
     const float kCubeVertices[] = {
@@ -33,8 +34,8 @@ Skybox::Skybox(std::shared_ptr<TextureCube> cubemap)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<void*>(0));
     GLVertexArray::Unbind();
 
-    const auto& vs = ShaderFactory::GetCompiledShader(GL_VERTEX_SHADER, "../assets/shaders/skybox.vsh");
-    const auto& fs = ShaderFactory::GetCompiledShader(GL_FRAGMENT_SHADER, "../assets/shaders/skybox.fsh");
+    const auto& vs = ShaderFactory::GetCompiledShader(GL_VERTEX_SHADER, AssetPaths::Resolve("shaders/skybox.vsh"));
+    const auto& fs = ShaderFactory::GetCompiledShader(GL_FRAGMENT_SHADER, AssetPaths::Resolve("shaders/skybox.fsh"));
 
     GLuint program = glCreateProgram();
     glAttachShader(program, vs.id);

@@ -8,7 +8,7 @@
 #include <span>
 
 #include "Pivot3D.h"
-#include "models/Mesh.h"
+#include "render/MeshRenderer.h"
 #include "render/Geometry.h"
 #include "render/VertexLayout.h"
 #include "render/VertexAttribute.h"
@@ -19,6 +19,13 @@
 #include "lighting/PhongLightingModel.h"
 #include "lighting/PBRLightingModel.h"
 #include "lighting/UnlitLightingModel.h"
+#include "utils/AssetPaths.h"
+#include "behaviours/Behaviour.h"
+#include "behaviours/BehaviourFactory.h"
+#include "behaviours/reflection/Property.h"
+#include "behaviours/reflection/References.h"
+
+#include <functional>
 
 using json = nlohmann::json;
 
@@ -180,8 +187,8 @@ std::shared_ptr<Geometry> GeometryFromJson(const json& gj, const std::vector<std
 
 std::shared_ptr<Material3D> MaterialFromJson(const json& mj) {
     auto mat = std::make_shared<Material3D>(
-        mj.value("vertexShader", "../assets/shaders/shader.vsh"),
-        mj.value("fragmentShader", "../assets/shaders/defaultColorLight.fsh"));
+        mj.value("vertexShader", AssetPaths::Resolve("shaders/shader.vsh")),
+        mj.value("fragmentShader", AssetPaths::Resolve("shaders/defaultColorLight.fsh")));
 
     mat->SetLightingModel(CreateLighting(mj.value("lighting", "Unlit")));
     mat->SetRoughnessScale(mj.value("roughnessScale", 1.0f));
@@ -211,6 +218,120 @@ std::shared_ptr<Material3D> MaterialFromJson(const json& mj) {
     return mat;
 }
 
+// ───────────────────────── Behaviours (компоненты) ─────────────────────────
+// Значения свойств (де)сериализуются обобщённо по дескрипторам Behaviour::GetProperties().
+
+json ScalarToJson(PropertyType type, void* field) {
+    switch (type) {
+    case PropertyType::Bool:   return *static_cast<bool*>(field);
+    case PropertyType::Int:    return *static_cast<int*>(field);
+    case PropertyType::Float:  return *static_cast<float*>(field);
+    case PropertyType::String: return *static_cast<std::string*>(field);
+    case PropertyType::Vec3:
+    case PropertyType::Color:  return Vec3ToJson(*static_cast<glm::vec3*>(field));
+    case PropertyType::NodeRef: {
+        const auto* r = static_cast<NodeRef*>(field);
+        return json{ { "node", r->id } };
+    }
+    case PropertyType::BehRef: {
+        const auto* r = static_cast<BehRef*>(field);
+        return json{ { "node", r->nodeId }, { "type", r->type } };
+    }
+    default: return nullptr;
+    }
+}
+
+void ScalarFromJson(PropertyType type, void* field, const json& j) {
+    switch (type) {
+    case PropertyType::Bool:   *static_cast<bool*>(field) = j.get<bool>(); break;
+    case PropertyType::Int:    *static_cast<int*>(field) = j.get<int>(); break;
+    case PropertyType::Float:  *static_cast<float*>(field) = j.get<float>(); break;
+    case PropertyType::String: *static_cast<std::string*>(field) = j.get<std::string>(); break;
+    case PropertyType::Vec3:
+    case PropertyType::Color:  *static_cast<glm::vec3*>(field) = Vec3FromJson(j); break;
+    case PropertyType::NodeRef: {
+        auto* r = static_cast<NodeRef*>(field);
+        r->id = j.value("node", 0u);
+        r->cached.reset();
+        break;
+    }
+    case PropertyType::BehRef: {
+        auto* r = static_cast<BehRef*>(field);
+        r->nodeId = j.value("node", 0u);
+        r->type = j.value("type", std::string());
+        r->cached = nullptr;
+        break;
+    }
+    default: break;
+    }
+}
+
+json PropertyToJson(const Property& p, void* field) {
+    if (p.type == PropertyType::List) {
+        json arr = json::array();
+        const std::size_t n = p.listSize(field);
+        for (std::size_t i = 0; i < n; ++i) {
+            arr.push_back(ScalarToJson(p.elementType, p.listAt(field, i)));
+        }
+        return arr;
+    }
+    return ScalarToJson(p.type, field);
+}
+
+void PropertyFromJson(const Property& p, void* field, const json& j) {
+    if (p.type == PropertyType::List) {
+        if (p.listClear) p.listClear(field);
+        if (j.is_array()) {
+            for (const json& elem : j) {
+                p.listAdd(field);
+                const std::size_t last = p.listSize(field) - 1;
+                ScalarFromJson(p.elementType, p.listAt(field, last), elem);
+            }
+        }
+        return;
+    }
+    ScalarFromJson(p.type, field, j);
+}
+
+json BehaviourToJson(const Behaviour& behaviour) {
+    json bj;
+    bj["type"] = behaviour.GetTypeName();
+    bj["enabled"] = behaviour.IsEnabled();
+    json params = json::object();
+    for (const Property& p : behaviour.GetProperties()) {
+        void* field = p.resolve(const_cast<Behaviour*>(&behaviour));
+        params[p.name] = PropertyToJson(p, field);
+    }
+    bj["params"] = params;
+    return bj;
+}
+
+void ApplyBehaviourParams(Behaviour& behaviour, const json& params) {
+    for (const Property& p : behaviour.GetProperties()) {
+        if (params.contains(p.name)) {
+            PropertyFromJson(p, p.resolve(&behaviour), params.at(p.name));
+        }
+    }
+}
+
+void ResolveScalarRef(PropertyType type, void* field, Pivot3D& root) {
+    if (type == PropertyType::NodeRef) {
+        auto* r = static_cast<NodeRef*>(field);
+        if (r->id != 0) {
+            r->cached = root.GetChildById(r->id);
+        }
+    } else if (type == PropertyType::BehRef) {
+        auto* r = static_cast<BehRef*>(field);
+        if (r->nodeId != 0) {
+            if (auto node = root.GetChildById(r->nodeId)) {
+                r->cached = r->type.empty()
+                    ? (node->GetBehaviours().empty() ? nullptr : node->GetBehaviours().front().get())
+                    : node->FindBehaviourByType(r->type);
+            }
+        }
+    }
+}
+
 } // namespace
 
 namespace SceneIO {
@@ -218,6 +339,7 @@ namespace SceneIO {
 json NodeToJson(SaveContext& ctx, const Pivot3D& node) {
     json nj;
     nj["name"] = node.GetName();
+    nj["id"] = node.GetId(); // нужно для резолва ссылок NodeRef/BehRef после загрузки
     nj["transform"] = {
         { "position", Vec3ToJson(*node.GetPosition()) },
         { "rotation", Vec3ToJson(*node.GetRotation()) },
@@ -226,14 +348,22 @@ json NodeToJson(SaveContext& ctx, const Pivot3D& node) {
     nj["castShadows"] = node.GetCastShadows();
     nj["receiveShadows"] = node.GetReceiveShadows();
 
-    if (const Mesh* mesh = dynamic_cast<const Mesh*>(&node)) {
-        nj["nodeMatrix"] = Mat4ToJson(mesh->GetNodeMatrix());
-        nj["geometry"] = RegisterGeometry(ctx, mesh->GetGeometry().get());
-        nj["material"] = RegisterMaterial(ctx, mesh->GetMaterial().get());
+    if (const MeshRenderer* renderer = node.GetRenderer()) {
+        nj["nodeMatrix"] = Mat4ToJson(renderer->GetNodeMatrix());
+        nj["geometry"] = RegisterGeometry(ctx, renderer->GetGeometry().get());
+        nj["material"] = RegisterMaterial(ctx, renderer->GetMaterial().get());
     } else {
         nj["geometry"] = -1;
         nj["material"] = -1;
     }
+
+    json behaviours = json::array();
+    for (const auto& behaviour : node.GetBehaviours()) {
+        if (behaviour) {
+            behaviours.push_back(BehaviourToJson(*behaviour));
+        }
+    }
+    nj["behaviours"] = behaviours;
 
     json children = json::array();
     for (const auto& child : const_cast<Pivot3D&>(node).Children()) {
@@ -267,11 +397,10 @@ std::shared_ptr<Pivot3D> NodeFromJson(const json& nj,
 
     std::shared_ptr<Pivot3D> node;
     if (g >= 0 && m >= 0 && g < static_cast<int>(geometries.size()) && m < static_cast<int>(materials.size())) {
-        auto mesh = std::make_shared<Mesh>(geometries[g], materials[m]);
+        node = MeshRenderer::MakeNode(geometries[g], materials[m]);
         if (nj.contains("nodeMatrix")) {
-            mesh->SetNodeMatrix(Mat4FromJson(nj.at("nodeMatrix")));
+            node->GetRenderer()->SetNodeMatrix(Mat4FromJson(nj.at("nodeMatrix")));
         }
-        node = mesh;
     } else {
         node = std::make_shared<Pivot3D>();
     }
@@ -286,6 +415,23 @@ std::shared_ptr<Pivot3D> NodeFromJson(const json& nj,
     node->SetScale(s.x, s.y, s.z);
     node->SetCastShadows(nj.value("castShadows", true));
     node->SetReceiveShadows(nj.value("receiveShadows", true));
+    // Восстанавливаем id, чтобы ссылки NodeRef/BehRef резолвились (см. ResolveReferences).
+    node->SetId(nj.value("id", node->GetId()));
+
+    if (nj.contains("behaviours")) {
+        for (const json& bj : nj.at("behaviours")) {
+            const std::string type = bj.value("type", std::string());
+            auto behaviour = BehaviourFactory::Create(type);
+            if (!behaviour) {
+                continue; // незарегистрированный тип (Camera/Animator/...) — пропускаем
+            }
+            behaviour->SetEnabled(bj.value("enabled", true));
+            Behaviour* raw = node->AddBehaviour(std::move(behaviour));
+            if (raw && bj.contains("params")) {
+                ApplyBehaviourParams(*raw, bj.at("params"));
+            }
+        }
+    }
 
     if (nj.contains("children")) {
         for (const json& cj : nj.at("children")) {
@@ -293,6 +439,29 @@ std::shared_ptr<Pivot3D> NodeFromJson(const json& nj,
         }
     }
     return node;
+}
+
+void ResolveReferences(Pivot3D& root) {
+    std::function<void(Pivot3D&)> visit = [&](Pivot3D& node) {
+        for (const auto& behaviour : node.GetBehaviours()) {
+            if (!behaviour) continue;
+            for (const Property& p : behaviour->GetProperties()) {
+                void* field = p.resolve(behaviour.get());
+                if (p.type == PropertyType::List) {
+                    const std::size_t n = p.listSize(field);
+                    for (std::size_t i = 0; i < n; ++i) {
+                        ResolveScalarRef(p.elementType, p.listAt(field, i), root);
+                    }
+                } else {
+                    ResolveScalarRef(p.type, field, root);
+                }
+            }
+        }
+        for (const auto& child : node.Children()) {
+            visit(*child);
+        }
+    };
+    visit(root);
 }
 
 } // namespace SceneIO

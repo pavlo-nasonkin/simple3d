@@ -9,6 +9,26 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmakeModules")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 set(SOURCE_FILES
+        src/behaviours/Behaviour.cpp
+        src/behaviours/Behaviour.h
+        src/behaviours/BehaviourFactory.cpp
+        src/behaviours/BehaviourFactory.h
+        src/behaviours/AnimatorBehaviour.cpp
+        src/behaviours/AnimatorBehaviour.h
+        src/behaviours/CameraBehaviour.cpp
+        src/behaviours/CameraBehaviour.h
+        src/behaviours/FlyCameraBehaviour.cpp
+        src/behaviours/FlyCameraBehaviour.h
+        src/behaviours/OrbitCameraBehaviour.cpp
+        src/behaviours/OrbitCameraBehaviour.h
+        src/behaviours/RotatorBehaviour.cpp
+        src/behaviours/RotatorBehaviour.h
+        src/behaviours/DemoBehaviour.cpp
+        src/behaviours/DemoBehaviour.h
+        src/behaviours/LightComponent.cpp
+        src/behaviours/LightComponent.h
+        src/behaviours/reflection/Property.h
+        src/behaviours/reflection/References.h
         src/camera/Camera.cpp
         src/camera/Camera.h
         src/camera/FirstPersonCamera.h
@@ -60,6 +80,12 @@ set(SOURCE_FILES
         src/object_selector/ObjectSelector.h
         src/render/RenderModeHelper.cpp
         src/render/RenderModeHelper.h
+        src/render/Renderer.cpp
+        src/render/Renderer.h
+        src/render/MeshRenderer.cpp
+        src/render/MeshRenderer.h
+        src/render/DrawItem.h
+        src/render/Frustum.h
         src/render/Geometry.cpp
         src/render/Geometry.h
         src/render/GeometryRegistry.h
@@ -89,6 +115,8 @@ set(SOURCE_FILES
         src/resources/TextureCube.h
         src/resources/HDRLoader.cpp
         src/resources/HDRLoader.h
+        src/utils/AssetPaths.cpp
+        src/utils/AssetPaths.h
         src/utils/FileUtils.cpp
         src/utils/FileUtils.h
         src/utils/Math.h
@@ -122,6 +150,8 @@ set(SOURCE_FILES
         src/editor/MaterialsInspectorPanel.h
         src/editor/MenuBarPanel.cpp
         src/editor/MenuBarPanel.h
+        src/editor/PropertyDrawer.cpp
+        src/editor/PropertyDrawer.h
         src/editor/EditorConfig.cpp
         src/editor/EditorConfig.h
         src/render/Framebuffer.cpp
@@ -132,8 +162,6 @@ set(SOURCE_FILES
         src/GLUtils.h
         src/materials/Material3D.cpp
         src/materials/Material3D.h
-        src/models/Mesh.cpp
-        src/models/Mesh.h
         src/models/Model.cpp
         src/models/Model.h
         src/Pivot3D.cpp
@@ -151,6 +179,8 @@ set(SOURCE_FILES
         src/input/GLFWKeyboardInput.h
         src/input/GLFWMouseInput.cpp
         src/input/GLFWMouseInput.h
+        src/app/Application.cpp
+        src/app/Application.h
         include/GL/glew.c
         main.cpp)
 

@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <vector>
 #include <span>
+#include <glm/glm.hpp>
 
 #include "render/GLBuffer.h"
 #include "render/GLVertexArray.h"
@@ -33,6 +34,11 @@ private:
     std::vector<GLuint> _indices;
     std::vector<SecondaryData> _secondaryData;
 
+    glm::vec3 _aabbMin { 0.0f };
+    glm::vec3 _aabbMax { 0.0f };
+    bool _hasBounds = false;
+    void ComputeBounds();
+
 public:
     Geometry(const VertexLayout& layout,
              std::span<const std::byte> vertexData,
@@ -57,6 +63,12 @@ public:
 
     void Draw() const;
     GLsizei IndicesCount() const { return _indicesCount; }
+
+    // Локальный AABB (по позициям вершин), для frustum culling. HasBounds()==false,
+    // если позицию не удалось определить (нет атрибута location=POSITION/float).
+    bool HasBounds() const { return _hasBounds; }
+    const glm::vec3& AABBMin() const { return _aabbMin; }
+    const glm::vec3& AABBMax() const { return _aabbMax; }
 
     // Доступ к CPU-данным для сериализации.
     const VertexLayout& Layout() const { return _layout; }

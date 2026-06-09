@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "Mesh.h"
+#include <memory>
 #include <GL/glew.h>
 #include "Model.h"
 #include "render/VertexTypes.h"
@@ -25,7 +25,7 @@ public:
 	BoxModel();
 	~BoxModel() override = default;
     void Init() override;
-    std::shared_ptr<Mesh> ProcessMesh();
+    std::shared_ptr<Pivot3D> ProcessMesh();
 
 	void SetColor(unsigned int color);
 

@@ -11,6 +11,7 @@
 #include "Scene3D.h"
 #include "Pivot3D.h"
 #include "camera/Camera.h"
+#include "behaviours/CameraBehaviour.h"
 #include "scene/Serialization.h"
 
 using json = nlohmann::json;
@@ -33,8 +34,14 @@ bool SceneSerializer::Save(Scene3D& scene, const Camera& camera, const std::stri
     json doc;
     doc["version"] = 1;
 
+    // Узел камеры создаётся/управляется приложением — в файл сцены его не пишем.
+    const Pivot3D* cameraOwner = scene.GetActiveCamera() ? scene.GetActiveCamera()->GetOwner() : nullptr;
+
     json nodes = json::array();
     for (const auto& child : scene.Children()) {
+        if (child.get() == cameraOwner) {
+            continue;
+        }
         nodes.push_back(SceneIO::NodeToJson(ctx, *child));
     }
     doc["nodes"] = nodes;
@@ -112,11 +119,19 @@ bool SceneSerializer::Load(Scene3D& scene, Camera& camera, const std::string& js
     auto geometries = SceneIO::BuildGeometries(doc.value("geometries", json::array()), bin);
     auto materials = SceneIO::BuildMaterials(doc.value("materials", json::array()));
 
-    // Заменяем содержимое сцены.
-    scene.RemoveChildren();
+    // Заменяем содержимое сцены, сохраняя узел камеры (его держит приложение).
+    const Pivot3D* cameraOwner = scene.GetActiveCamera() ? scene.GetActiveCamera()->GetOwner() : nullptr;
+    const pivots_list existing = scene.Children(); // копия для безопасного удаления
+    for (const auto& child : existing) {
+        if (child.get() != cameraOwner) {
+            scene.RemoveChild(child);
+        }
+    }
     for (const json& nj : doc.value("nodes", json::array())) {
         scene.AddChild(SceneIO::NodeFromJson(nj, geometries, materials));
     }
+    // Ссылки NodeRef/BehRef резолвим после построения всего дерева.
+    SceneIO::ResolveReferences(scene);
 
     if (doc.contains("environment")) {
         const json& env = doc.at("environment");

@@ -1,0 +1,157 @@
+{
+  "binary": "ground_1.bin",
+  "geometries": [
+    {
+      "indexCount": 6,
+      "indexOffset": 176,
+      "layout": {
+        "attributes": [
+          {
+            "componentCount": 3,
+            "componentType": 5126,
+            "isInteger": false,
+            "location": 0,
+            "normalize": false,
+            "offset": 0
+          },
+          {
+            "componentCount": 3,
+            "componentType": 5126,
+            "isInteger": false,
+            "location": 1,
+            "normalize": false,
+            "offset": 12
+          },
+          {
+            "componentCount": 2,
+            "componentType": 5126,
+            "isInteger": false,
+            "location": 2,
+            "normalize": false,
+            "offset": 24
+          },
+          {
+            "componentCount": 3,
+            "componentType": 5126,
+            "isInteger": false,
+            "location": 3,
+            "normalize": false,
+            "offset": 32
+          }
+        ],
+        "stride": 44
+      },
+      "secondary": [],
+      "vertexOffset": 0,
+      "vertexSize": 176
+    }
+  ],
+  "materials": [
+    {
+      "filters": [
+        {
+          "blend": 3,
+          "color": 4294967295,
+          "slot": 0,
+          "texturePath": "../assets/materials/worn_pavement_uddhdb1fw_4k/Worn_Pavement_uddhdb1fw_4K_BaseColor.jpg",
+          "type": "TextureMap"
+        },
+        {
+          "blend": 1,
+          "color": 4294967295,
+          "slot": 2,
+          "texturePath": "../assets/materials/worn_pavement_uddhdb1fw_4k/Worn_Pavement_uddhdb1fw_4K_Normal.jpg",
+          "type": "NormalMap"
+        },
+        {
+          "blend": 1,
+          "color": 4294967295,
+          "slot": 6,
+          "texturePath": "../assets/materials/worn_pavement_uddhdb1fw_4k/Worn_Pavement_uddhdb1fw_4K_Roughness.jpg",
+          "type": "TextureMap"
+        },
+        {
+          "blend": 1,
+          "color": 4294967295,
+          "slot": 7,
+          "texturePath": "../assets/materials/worn_pavement_uddhdb1fw_4k/Worn_Pavement_uddhdb1fw_4K_AO.jpg",
+          "type": "TextureMap"
+        }
+      ],
+      "fragmentShader": "../assets/shaders/defaultColorLight.fsh",
+      "lighting": "PBR",
+      "roughnessScale": 0.30000001192092896,
+      "vertexShader": "../assets/shaders/shader.vsh"
+    }
+  ],
+  "root": {
+    "castShadows": true,
+    "children": [
+      {
+        "castShadows": true,
+        "children": [],
+        "geometry": 0,
+        "material": 0,
+        "name": "Plane4",
+        "nodeMatrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "receiveShadows": true,
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    ],
+    "geometry": -1,
+    "material": -1,
+    "name": "Pivot3D",
+    "receiveShadows": true,
+    "transform": {
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        100.0,
+        100.0,
+        100.0
+      ]
+    }
+  },
+  "version": 1
+}

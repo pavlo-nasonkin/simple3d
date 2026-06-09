@@ -81,5 +81,9 @@ std::shared_ptr<Pivot3D> Prefab::Load(const std::string& jsonPath)
     if (!doc.contains("root")) {
         return nullptr;
     }
-    return SceneIO::NodeFromJson(doc.at("root"), geometries, materials);
+    auto root = SceneIO::NodeFromJson(doc.at("root"), geometries, materials);
+    if (root) {
+        SceneIO::ResolveReferences(*root); // резолв ссылок внутри поддерева префаба
+    }
+    return root;
 }

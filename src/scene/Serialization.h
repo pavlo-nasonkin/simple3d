@@ -36,4 +36,8 @@ std::shared_ptr<Pivot3D> NodeFromJson(const nlohmann::json& node,
                                       const std::vector<std::shared_ptr<Geometry>>& geometries,
                                       const std::vector<std::shared_ptr<Material3D>>& materials);
 
+// Второй проход после построения дерева: резолвит ссылки NodeRef/BehRef в компонентах
+// по id (узлы уже существуют и сохранили свои id).
+void ResolveReferences(Pivot3D& root);
+
 } // namespace SceneIO

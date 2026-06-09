@@ -866,6 +866,449 @@ top of the GL context. Dependencies — via vcpkg.
 
 ---
 
+## Open items recap (necessary work still outstanding)
+
+Stages 1–8 are essentially complete. The items that are **still required** before
+(or alongside) the component system below:
+
+- [ ] **4.4. Directional light for PBR — verify & close.** The code already reads
+  `dirLight.*` in `PBRLightingModel` and `Scene3D` exposes the dir-light getters/
+  setters, so this is *implemented but unchecked*. Confirm the demo/scene actually
+  drives it and flip the box, or list what's missing.
+- [ ] **7.6. Shadow tuning** (front-face cull / polygon offset, frustum fit,
+  skinned depth variant) — see also `REFACTORING_PLAN.md` 9.5.
+- [ ] **Blocking correctness fixes from `REFACTORING_PLAN.md` Stage 7** that the
+  Behaviour/camera work below depends on:
+  - **7.1** FOV passed in degrees to `glm::perspective` (radians) — must be fixed
+    before `CameraBehaviour` owns projection setup, or every camera inherits the bug.
+  - **7.2** uninitialized `glm::mat4` in the orbit camera — its logic moves into a
+    behaviour (9.5), fix it during the migration.
+  - **Camera lives outside the scene graph** (`REFACTORING_PLAN.md` 8.x) — directly
+    addressed by `CameraBehaviour` (9.5).
+
+---
+
+## Stage 9. Behaviour (component) system
+
+Goal: attach reusable logic to **any** scene node by **composition** instead of
+inheritance. Today a node's behaviour is expressed either by subclassing
+`Pivot3D` (`BoxModel`, `ExternalModel`) or by standalone objects that live
+**outside** the graph (`FreeLookCamera`/`FirstPersonCamera` subscribe to input
+directly and are *not* nodes). Neither composes: you can't add "spin over time"
+or "follow a target" to an arbitrary node without a new subclass, and the camera
+can't be a child of a node, serialized, or manipulated in the editor.
+
+A `Behaviour` is this engine's analogue of Unity's `MonoBehaviour` / Unreal's
+`UActorComponent`: a self-contained unit of logic + data, **owned by one node**,
+with a lifecycle and a per-frame `OnUpdate`. `Pivot3D` becomes the "GameObject";
+behaviours are what make it *do* something.
+
+### Why composition (design rationale)
+
+| | Subclass `Pivot3D` (today) | Standalone object (today's cameras) | **Behaviour (this stage)** |
+|---|---|---|---|
+| Reuse logic on any node | no — one role per class | n/a | **yes — attach to any node** |
+| Combine several behaviours | no (single inheritance) | n/a | **yes — N per node** |
+| In the scene graph (transform, parent) | yes | **no** | **yes (uses owner's transform)** |
+| Serialized / editable in editor | partially | **no** | **yes (9.8 / 9.9)** |
+| Lifetime tied to the node | yes | manual subscribe/unsubscribe | **yes (auto OnAttach/OnDetach)** |
+
+The contract mirrors the existing, working patterns in this codebase:
+- **Self-describing + factory**, exactly like `Filter3D::GetTypeName()/Serialize()`
+  + `FilterFactory` (8.5a). A `BehaviourFactory` rebuilds a behaviour from a type
+  string + params.
+- **Update driven by scene traversal**, not by every behaviour self-registering on
+  `UpdateBroadcaster`. `Scene3D::Update(dt)` (currently an empty TODO) walks the
+  graph and ticks behaviours — deterministic, lifetime-safe, and skippable for
+  inactive subtrees. `UpdateBroadcaster` stays for *engine-level* systems only.
+
+### Substages
+
+- [x] **9.1. `Behaviour` base class + lifecycle.** Done. `src/behaviours/Behaviour.*`: `OnAttach/OnStart/OnUpdate/OnDetach/OnEnable/OnDisable`, `GetOwner()`, `SetEnabled/IsEnabled` (fires OnEnable/OnDisable on transitions), pure `GetTypeName()`. Engine-only lifecycle entry points (`Attach`/`Detach`/`Tick`) are private and called via `friend class Pivot3D`. `Serialize()`/`BehaviourData` deferred to 9.8.
+  ```cpp
+  // src/behaviours/Behaviour.h
+  class Pivot3D;
+  struct BehaviourData; // neutral descriptor for serialization (см. 9.8)
+
+  class Behaviour {
+      friend class Pivot3D;     // only the owner drives the lifecycle
+  public:
+      virtual ~Behaviour() = default;
+
+      Pivot3D* GetOwner() const { return _owner; }
+      bool     IsEnabled() const { return _enabled; }
+      void     SetEnabled(bool e);   // fires OnEnable/OnDisable on transitions
+
+      // Self-description (serialization + inspector), like Filter3D.
+      virtual std::string  GetTypeName() const = 0;
+      virtual BehaviourData Serialize() const;       // base: just the type
+  protected:
+      // Called by the engine, never directly:
+      virtual void OnAttach() {}          // _owner set, node already in graph
+      virtual void OnStart()  {}          // once, before the first OnUpdate
+      virtual void OnUpdate(float dt) {}  // each frame while enabled & owner active
+      virtual void OnDetach() {}          // before removal / node destruction
+      virtual void OnEnable() {}
+      virtual void OnDisable() {}
+  private:
+      Pivot3D* _owner   = nullptr;
+      bool     _enabled = true;
+      bool     _started = false;
+  };
+  ```
+  - **No GL, no rendering here.** A behaviour is logic; rendering stays in
+    `Mesh`/`Material`. `OnUpdate` runs even when the node is off-screen (logic ≠
+    draw).
+  - File: `src/behaviours/Behaviour.h/.cpp`.
+
+- [x] **9.2. `Pivot3D` owns behaviours + typed API.** Done. `Pivot3D` holds `vector<unique_ptr<Behaviour>>` and exposes `AddBehaviour<T>(args...)` (constructs, stores, `Attach`), `GetBehaviour<T>()`/`HasBehaviour<T>()` (via `dynamic_cast`), `RemoveBehaviour<T>()`. Destructor calls `Detach()` on all behaviours while they're still alive.
+  ```cpp
+  // additions to Pivot3D
+  std::vector<std::unique_ptr<Behaviour>> _behaviours;
+
+  template <typename T, typename... Args>
+  T* AddBehaviour(Args&&... args) {                 // constructs in place
+      static_assert(std::is_base_of_v<Behaviour, T>);
+      auto b = std::make_unique<T>(std::forward<Args>(args)...);
+      T* raw = b.get();
+      raw->_owner = this;
+      _behaviours.push_back(std::move(b));
+      raw->OnAttach();
+      return raw;                                   // caller may configure it
+  }
+
+  template <typename T> T* GetBehaviour() const;    // first match via dynamic_cast
+  template <typename T> bool HasBehaviour() const { return GetBehaviour<T>() != nullptr; }
+  template <typename T> void RemoveBehaviour();     // OnDetach + deferred erase
+
+  void UpdateBehaviours(float dt);                  // OnStart once, then OnUpdate
+  ```
+  - **Ownership is `unique_ptr`** — a behaviour belongs to exactly one node and
+    dies with it. The destructor calls `OnDetach()` on each (so subscriptions etc.
+    are released).
+  - **Typed lookup via `dynamic_cast`** keeps it simple and dependency-free; if it
+    ever shows up in a profile, switch to a `std::type_index`-keyed map. Don't
+    introduce a string-id API for lookup — that's the `SetLightingModel("PBR")`
+    anti-pattern.
+  - Files: `src/Pivot3D.h/.cpp`.
+
+- [x] **9.3. Update integration (scene-driven tick) + `active` flag.** Done. `Pivot3D::UpdateSubtree(dt)` walks the graph (skips inactive subtrees via the new `_active` flag, `SetActive/IsActive`), ticking each node's behaviours (`UpdateBehaviours` → `OnStart` once + `OnUpdate`). `Scene3D::Update(float dt)` now calls `UpdateSubtree`. Wired into `Application::MainLoop` after `UpdateBroadcaster::Update` and gated to play mode (`!_editorMode`). Deferred add/remove during a tick: structural changes are queued (`_pendingAdd`/`_pendingRemove`, `_iteratingBehaviours`) and flushed after the loop; child iteration uses a copy so a behaviour can add/remove children mid-tick.
+  - Fill in the empty `Scene3D::Update(float dt)` to walk the graph and tick
+    behaviours:
+    ```cpp
+    void Pivot3D::UpdateSubtree(float dt) {
+        if (!_active) return;            // inactive subtree is skipped entirely
+        UpdateBehaviours(dt);            // OnStart (once) + OnUpdate for enabled
+        for (auto& child : _children) child->UpdateSubtree(dt);
+    }
+    // Scene3D::Update(dt) { UpdateSubtree(dt); /* + animations later */ }
+    ```
+  - Add a node `_active` flag (`SetActive/IsActive`, default true) — the natural
+    place to gate both update and (later) render of a subtree. This is small and
+    belongs with this stage.
+  - **Wire it into the loop:** `main.cpp` already calls
+    `UpdateBroadcaster::Update(dt)`; add `scene3D->Update(dt)` right after, so
+    behaviours tick once per frame in both editor and play modes (decide whether
+    behaviours run in editor mode — default: only in play mode, like Unity).
+  - **Deferred add/remove:** `AddBehaviour`/`RemoveBehaviour` called *from inside*
+    `OnUpdate` must not invalidate the iteration. Queue structural changes and
+    apply them after the tick loop (mirror how `MouseInput`/`UpdateBroadcaster`
+    iterate over a copy).
+  - Files: `src/Scene3D.cpp`, `src/Pivot3D.cpp`, `main.cpp`.
+
+- [ ] **9.4. Input & time access for behaviours.**
+  Behaviours that need input (camera, character) should **poll** in `OnUpdate`
+  rather than each subclassing `IMouseListener`/`IKeyboardListener` (that's the
+  old camera pattern we're replacing). Provide what polling needs:
+  - Keyboard polling already exists: `Engine::GetKeyboardInput()->IsKeyPressed(key)`.
+  - Add a **per-frame mouse delta** to `MouseInput` (`GetMouseDelta()` reset each
+    frame) so `OnUpdate` can read look/drag deltas without callback bookkeeping.
+  - `deltaTime` is passed into `OnUpdate`; absolute time via `Engine::GetTimerSec()`.
+  - Files: `src/input/MouseInput.h/.cpp`, `src/Engine.*`.
+
+- [x] **9.5. `CameraBehaviour` — the camera becomes a node.** Done.
+  - `CameraBehaviour` (`src/behaviours/CameraBehaviour.*`) = sensor: derives the view
+    from the owner's world matrix (`view = inverse(WorldMatrix())`, via new
+    `Pivot3D::WorldMatrix()`), so the camera follows its parent. To avoid churning the
+    whole pipeline it keeps a shared `Camera` synced each frame (`Refresh`) and exposes
+    it; `RenderContext.camera`, `ViewportPanel`, `ObjectSelector` keep using `Camera*`
+    unchanged. Projection helper `SetViewportSize` builds with `glm::radians` (7.1).
+  - `FlyCameraBehaviour` (`src/behaviours/FlyCameraBehaviour.*`) = controller: while RMB
+    is held, mouse look + WASD/QE move the **owner node** (poll-based, no listener subs;
+    added `MouseInput::IsButtonPressed`). RMB-gating prevents UI typing/clicks from moving
+    the camera. Replaces `FreeLookCamera` in the demo (`FreeLookCamera`/`FirstPersonCamera`
+    kept in the tree but no longer wired).
+  - `Scene3D::SetActiveCamera/GetActiveCamera`. `Application` builds a `MainCamera` node
+    (FlyCamera + Camera behaviours), registers it active, and the render/editor/pick paths
+    pull the `Camera*` from it. Behaviours now tick in **both** modes (so the editor camera
+    works); an edit/play split is a later task.
+  - *Known limitations (v1):* orientation comes from the node's Euler (`Rx*Ry*Rz`), so
+    extreme combined pitch+yaw can show slight roll; movement is in the node/parent-local
+    basis; scene-file camera save/load still targets the legacy `Camera` (orientation not
+    restored — only position is copied onto the node). Reconcile when the camera node is
+    serialized (9.8); consider a quaternion/`OrbitCameraBehaviour` follow-up.
+  This is the headline payoff: the camera stops being a standalone object and
+  becomes a behaviour on a normal `Pivot3D`, so it has a transform, a parent, is
+  serialized, and shows up in the editor.
+  - **Responsibility split (don't merge sensor + controller):**
+    - `CameraBehaviour` = the *sensor*. It owns projection params (fovY **in
+      degrees**, near, far — and builds the matrix with `glm::radians(fovY)`,
+      fixing `REFACTORING_PLAN` 7.1) and derives the **view matrix from the owner's
+      world transform** (`view = inverse(ownerWorld)`). It can register itself as
+      the scene's *active camera*.
+    - `OrbitCameraBehaviour` / `FlyCameraBehaviour` = *controllers*. They read
+      input (9.4) and move/rotate the **owner node**; the `CameraBehaviour` on the
+      same node turns that transform into view. The orbit logic from
+      `FreeLookCamera` moves here (and we fix the uninitialized-matrix bug,
+      `REFACTORING_PLAN` 7.2, in the process); WASD+look from `FirstPersonCamera`
+      moves into `FlyCameraBehaviour`.
+  - **Active camera:** add `Scene3D::SetActiveCamera(CameraBehaviour*)` /
+    `GetActiveCamera()`. The render entry points (`main.cpp`, `ViewportPanel`,
+    `ObjectSelector`) build `RenderContext.view/projection` from the active camera
+    instead of a free-standing `Camera`. Keep the existing `Camera` math class as
+    an implementation detail of `CameraBehaviour`, or fold its math in — decide
+    during implementation; either way, only `CameraBehaviour` is the public seam.
+  - **Migration:** replace the `auto camera = std::make_shared<FreeLookCamera>()`
+    setup in `main.cpp` with a camera node:
+    ```cpp
+    auto cameraNode = std::make_shared<Pivot3D>();
+    cameraNode->SetName("MainCamera");
+    auto* cam = cameraNode->AddBehaviour<CameraBehaviour>(/*fovYDeg=*/45.0f, 0.1f, 100.0f);
+    cameraNode->AddBehaviour<OrbitCameraBehaviour>();
+    scene3D->AddChild(cameraNode);
+    scene3D->SetActiveCamera(cam);
+    ```
+  - Files: `src/behaviours/CameraBehaviour.*`, `src/behaviours/OrbitCameraBehaviour.*`,
+    `src/behaviours/FlyCameraBehaviour.*`, `src/Scene3D.*`, `main.cpp`,
+    `src/editor/ViewportPanel.cpp`, `src/object_selector/ObjectSelector.cpp`.
+  - *Check:* parenting the camera node under a moving node makes the view follow it
+    (proves the camera is truly in the graph); the editor can select and move it.
+
+- [ ] **9.6. `CharacterBehaviour`.** Movement controller for a gameplay actor on
+  any node: WASD (relative to the active camera's yaw or to the node's own
+  forward), turn, optional simple gravity + ground clamp (raycast against a Y
+  plane until real collision exists). Reads input via 9.4, writes the owner's
+  transform via `Pivot3D::Translate/Rotate`. Keep physics out of scope — this is
+  kinematic movement only.
+  - File: `src/behaviours/CharacterBehaviour.*`.
+
+- [~] **9.7. Example behaviours (tests/demo).** Tiny behaviours that exercise the
+  system end-to-end and double as smoke tests:
+  - [x] `RotatorBehaviour` — spins the owner at a configurable axis/speed
+    (`owner->Rotate(axis*speed*dt)`), proves `OnUpdate` + transform writes. Done
+    (`src/behaviours/RotatorBehaviour.*`); attached to the demo crate in
+    `Application::BuildDemoScene` as a live smoke test (ticks in play mode).
+  - [ ] `FollowTargetBehaviour` — keeps the owner at an offset from another node,
+    proves cross-node references (store a `std::weak_ptr<Pivot3D>` target).
+  - Files: `src/behaviours/RotatorBehaviour.*`, `src/behaviours/FollowTargetBehaviour.*`.
+
+- [x] **9.8. Serialization (`BehaviourFactory` + generic property (de)serialization).** Done.
+  `BehaviourFactory` (`src/behaviours/BehaviourFactory.*`): type-string → constructor registry
+  (`Register`/`Create`/`IsRegistered`/`Registry`), `RegisterBuiltins()` registers `Rotator`+`Demo`
+  (called in `Application::Run`). Programmatic components (Camera/FlyCamera/Animator) are *not*
+  registered and are skipped on load. Behaviour (de)serialization lives in `SceneIO`
+  (`Serialization.cpp`) and is generic over `Behaviour::GetProperties()` — each node now stores
+  `"id"` + a `"behaviours":[{type,enabled,params}]` array; values are written/read by
+  `PropertyType` (incl. lists; `Property` gained `listClear`). `Pivot3D` got an
+  `AddBehaviour(unique_ptr)` overload for the factory. Works for both scenes and prefabs (shared
+  `NodeToJson`/`NodeFromJson`); `RotatorBehaviour` gained `GetProperties` so it round-trips.
+  - **NodeRef/BehRef**: serialized by id (node) / (nodeId+type); node ids are saved and restored
+    (`SetId`) so a second pass `SceneIO::ResolveReferences(root)` (run after scene/prefab load)
+    resolves the cached pointers.
+  - **Camera-node fix:** `SceneSerializer::Save` skips the active-camera owner node and `Load`
+    preserves it (removes only non-camera children) instead of wiping all — the app-owned camera
+    node and `Scene3D::GetActiveCamera()` stay valid across load.
+  - *Caveat:* restored ids can overlap future runtime ids (`_idCounter` not advanced) — tied to
+    `REFACTORING_PLAN` 7.7.
+  Reuse the proven filter pattern (8.5a) verbatim:
+  ```cpp
+  struct BehaviourData {                 // neutral descriptor (no GL, no logic)
+      std::string type;                  // "Rotator", "Camera", "Character", ...
+      bool enabled = true;
+      nlohmann::json params;             // type-specific fields
+  };
+  // BehaviourFactory::Create(const BehaviourData&) -> std::unique_ptr<Behaviour>
+  ```
+  - Each `Behaviour` implements `GetTypeName()` + `Serialize()` (params), and the
+    factory maps type-string → constructor (a registry, like `FilterFactory`).
+  - Extend `SceneIO::NodeToJson`/`NodeFromJson` (`src/scene/Serialization.cpp`)
+    with a per-node `"behaviours": [ {type, enabled, params...} ]` array. Prefabs
+    and scenes get behaviour persistence for free (both go through `SceneIO`).
+  - **Cross-node references** (e.g. `FollowTargetBehaviour`, active camera) are
+    serialized by **node id/path**, resolved in a second pass after the whole tree
+    is built (ids aren't stable across loads — store a path or a save-local index).
+  - Files: `src/behaviours/BehaviourData.h`, `src/behaviours/BehaviourFactory.*`,
+    `src/scene/Serialization.cpp`, the `Serialize`/`GetTypeName` overrides per behaviour.
+
+- [x] **9.13. Property reflection (variant A) — manual, no codegen.** Done.
+  Lightweight type-safe reflection for behaviour fields via member pointers
+  (`src/behaviours/reflection/Property.h`): `PropertyType` (Bool/Int/Float/String/
+  Vec3/Color/NodeRef/BehRef/List), `Property` descriptor, and `reflection::MakeProperty`/
+  `MakeListProperty` wrapped in `REFLECT_PROPERTY`/`REFLECT_LIST` macros. `Behaviour`
+  gained `virtual GetProperties()` (default empty). Reference types in
+  `reflection/References.h`: `NodeRef` (id + cached `weak_ptr<Pivot3D>`) and `BehRef`
+  (nodeId + type + cached raw `Behaviour*`); resolved via new `Pivot3D::Root()` +
+  `GetChildById`/`FindBehaviourByType`, with `Pivot3D::GetBehaviours()` exposed for the
+  inspector. `DemoBehaviour` exercises every type incl. `std::vector<int/float/NodeRef>`.
+  Same `GetProperties()` is the single source of truth for the inspector now and
+  serialization later (9.8). This is the recommended path; a tag/codegen step (libclang)
+  can fill the same `Property` list later without changing consumers.
+
+- [x] **9.9. Editor: behaviour inspector.** Done. `InspectorPanel` lists the selected
+  node's behaviours (enable/disable + collapsing header + per-component **Remove**) and
+  renders their fields generically via `editor::DrawBehaviourProperties`
+  (`src/editor/PropertyDrawer.*`): ImGui widget per `PropertyType`, list add/remove, and
+  **drag-n-drop** of nodes from `HierarchyPanel` (payload `"NODE_ID"`) onto `NodeRef`/`BehRef`
+  fields. An **"Add Behaviour"** combo is populated from `BehaviourFactory::Registry()` and
+  creates the component on the node. Removal is deferred past the inspector's iteration; new
+  `Pivot3D::RemoveBehaviour(Behaviour*)` overload backs it. In `InspectorPanel`, below the
+  transform, list the selected node's behaviours with: enable/disable checkbox,
+  remove button, an **"Add Behaviour"** combo (populated from `BehaviourFactory`'s
+  registered types), and per-type parameter widgets. One source of truth: the same
+  fields exposed by `Serialize()`/`params` are what the inspector edits — mirrors
+  the material/filter inspector (8.3).
+  - File: `src/editor/InspectorPanel.cpp`.
+
+### Componentizing the rest of the engine: `Behaviour` vs `RenderComponent`
+
+Not everything that "hangs off a node" is a `Behaviour`. There are **two distinct
+component contracts**, and lumping them into one base is the very anti-pattern #2
+below (the same reason `ILightingModel` is not a `Filter3D`):
+
+- **`Behaviour`** — *logic*. Has `OnUpdate(dt)`, ticked by the scene walk
+  (`Scene3D::Update`). Mutates state. Examples: camera controllers, character,
+  animator, rotator.
+- **`RenderComponent`** — *render data*. **No `OnUpdate`**; the renderer collects
+  these once per frame during the render pass and reads them. Examples: the
+  mesh-render role, lights. (Unity's split: `MonoBehaviour` vs `MeshRenderer`/`Light`.)
+
+```cpp
+// Two bases, two call sites — NOT a single "Component"
+class Behaviour;        // OnUpdate(dt); driven by Scene3D::Update
+class RenderComponent;  // no tick; collected/read by the Renderer each frame
+// Pivot3D keeps them in separate lists (different contracts).
+```
+
+A third bucket — **engine systems / scene properties** — are *not* node components
+at all: `ObjectSelector`, `ShadowMap`, `IBLBaker`, `Framebuffer`, the future
+`Renderer`, and the **Skybox/`SceneEnvironment`** (one global background pass +
+IBL source per scene) stay where they are. Attaching them to a node buys nothing.
+
+Mapping of existing code (priority order):
+
+- [x] **9.10. `AnimatorBehaviour` (logic) — extract skinning from the render path.** Done.
+  Moved all per-frame skeletal sampling (`BoneTransform`/`ReadNodeHierarchy`/keyframe
+  interpolation + `BoneInfo`, `_boneMapping`, `_boneInfos`, the shared `transforms`
+  buffer) out of `ExternalModel::Render` into `AnimatorBehaviour::OnUpdate`
+  (`src/behaviours/AnimatorBehaviour.*`). `ExternalModel::Render` override is gone
+  (uses `Pivot3D::Render`); after load it extracts bones, initialises the bone buffer
+  to identity (bind pose), and — if the asset has animations — attaches an
+  `AnimatorBehaviour` configured with the `aiScene` + bone data + shared buffer.
+  `SkinnedMaterial3D` only *reads* the finished `transforms`. Time is accumulated from
+  `deltaTime` (pausable) instead of the global engine timer.
+  - *Open follow-up (unchanged):* the animator still holds a raw `aiScene*` kept alive
+    by `ExternalModel`'s `Assimp::Importer`; replace with a compact extracted keyframe
+    structure (DEVELOP 9.10 note / `REFACTORING_PLAN` 8.5). Skinned shadow depth (7.x)
+    still pending.
+  Today `ExternalModel::Render` calls `BoneTransform(Engine::GetTimerSec(), _transforms)`
+  *during rendering* — animation logic running inside the draw call, recomputed even
+  when nothing renders. Move all of it (`BoneTransform`/`ReadNodeHierarchy`/keyframe
+  interpolation, `_boneInfos`, `_boneMapping`, the shared `_transforms` buffer) into
+  an `AnimatorBehaviour` that updates bone matrices in `OnUpdate(dt)`; `SkinnedMaterial3D`
+  then only *reads* the finished `transforms` in `Bind`. This is the cleanest win:
+  it removes logic-from-render and slots straight into Stage 9.
+  - *Open question:* `ExternalModel` currently keeps the whole `aiScene` alive for
+    sampling (see `REFACTORING_PLAN` 8.5). The animator should own a compact,
+    extracted keyframe structure instead of the live `aiScene`.
+  - Files: new `src/behaviours/AnimatorBehaviour.*`, `src/models/ExternalModel.*`
+    (strip the animation code, attach an `AnimatorBehaviour` when `mNumAnimations>0`),
+    `src/materials/SkinnedMaterial3D.cpp`.
+
+- [~] **9.11. `LightComponent` (render data).** Directional done; point = data-only stub.
+  `LightComponent` base (`src/behaviours/LightComponent.*`) holds color/intensity and is pure
+  **data** (no `OnUpdate`). `DirectionalLightComponent` derives direction from the owner node's
+  world forward (−Z) + carries ambient; `PointLightComponent` exposes world position + range
+  (not consumed by the single-light shader yet). Both are reflected (`GetProperties`), serialized
+  and addable via the inspector (registered in `BehaviourFactory`).
+  `Scene3D` finds the active directional light by traversing the graph **each frame**
+  (`FindActiveDirectionalLight`, no cached dangling pointer across loads) and exposes
+  `GetEffectiveDirLight*`/`GetEffectiveAmbient`, which PBR and the shadow pass now read (falling
+  back to the legacy `Scene3D` fields when no light component is present). Demo adds a `Sun` node.
+  - *Remaining:* multi-light accumulation in the shader + point/spot consumption; removing the
+    legacy `_dirLight*`/point-light fields and dead `_lamp` from `Scene3D` (REFACTORING 8.2) once
+    nothing depends on the fallback; serialize/edit the light direction via gizmo.
+  Replace the loose light fields on `Scene3D` (`_dirLight*`, the legacy point-light
+  `_lightAmbient/Diffuse/Specular/_lightPosition`, the unused `_lamp`) with
+  `DirectionalLightComponent` / `PointLightComponent` attached to nodes — the light's
+  direction/position then comes from the **node's world transform**, so it's
+  editable and gizmo-able. The renderer collects all enabled light components each
+  frame into a list that lighting models read via `RenderContext` (today PBR reads a
+  single `dirLight` straight off `Scene3D`). This directly closes
+  `REFACTORING_PLAN` 8.2 (dead light state) and feeds 8.3 (renderer consumes a list
+  of lights). It's **data, not a tick** — don't give it `OnUpdate`.
+  - *Scope note:* start with one directional + the existing single-light shader path;
+    multi-light accumulation in the shader is a follow-up.
+  - Files: new `src/render/components/LightComponent.*` (+ Directional/Point),
+    `src/Scene3D.*`, `src/lighting/PBRLightingModel.cpp`, `src/render/RenderContext.h`,
+    serialization in `src/scene/Serialization.cpp`.
+
+- [x] **9.12. `MeshRenderer` (render data) — split the render role out of `Mesh`.** Done.
+  Introduced `MeshRenderer` (`src/render/MeshRenderer.*`): a render-component (geometry + material +
+  pre-PRS `nodeMatrix`, no tick) that draws via `Pivot3D::Render`. `Pivot3D` got an optional
+  `std::unique_ptr<MeshRenderer> _renderer` slot (`SetRenderer`/`GetRenderer`); the base `Render`
+  draws it (`model = ctx.model * nodeMatrix`) then recurses — the `Mesh` subclass is **deleted**.
+  Material `Bind(ctx, const Mesh*)` → `Bind(ctx, const Pivot3D* node)` across MaterialBase/Material3D/
+  ColorMaterial/ObjectIdMaterial/SkinnedMaterial3D (id/receiveShadows are node properties). Model
+  factories (`BoxModel`/`PlaneModel`/`PrimitiveModel`/`ExternalModel`) and the (de)serializer now build
+  "a node + `MeshRenderer`" via `MeshRenderer::MakeNode`; `MaterialsInspectorPanel` reads the material
+  through `GetRenderer()`. Picking/ids unchanged (the mesh node carries the id).
+  - *Sequencing met:* built on the `Renderer` layer (REFACTORING 8.3 v1).
+  - *Remaining:* the renderer still walks the graph via `Pivot3D::Render` rather than a flat
+    render-queue of `MeshRenderer`s collected by `Renderer` (a `RenderPass`/queue is the follow-up that
+    enables sorting/instancing/culling, REFACTORING 9.3); primitives are still one `Model` subclass each
+    (could collapse to node + `MeshRenderer` factories).
+  Biggest, most invasive, do it last. Today `Mesh : Pivot3D` couples node + geometry
+  + material + draw. The Unity/Unreal model is `Pivot3D` node + a `MeshRenderer`
+  render-component holding `shared_ptr<Geometry>` + `shared_ptr<MaterialBase>`; the
+  renderer draws all `MeshRenderer`s, no per-node `Render()` override. Stage 6 already
+  did the hard part (Geometry is a separate shared resource), and this also resolves
+  `REFACTORING_PLAN` 8.8 (the duplicated traversal preamble in `Pivot3D::Render`/
+  `Mesh::Render`). Once it lands, `BoxModel/PlaneModel/Sphere/...` collapse into
+  "a node + a `MeshRenderer` with primitive geometry" (factory functions instead of
+  one subclass per shape).
+  - *Sequencing:* do this **after** the `Renderer`/`RenderPass` layer from
+    `REFACTORING_PLAN` 8.3 exists, since the renderer is what iterates render
+    components.
+  - Files: new `src/render/components/MeshRenderer.*`, `src/models/*` (collapse
+    subclasses), `src/Pivot3D.*`/`src/models/Mesh.*` (remove the draw role),
+    `src/scene/Serialization.cpp`, the future `src/render/Renderer.*`.
+
+> Explicitly **not** componentized: Skybox / `SceneEnvironment` (scene property),
+> `ObjectSelector`, `ShadowMap`, `IBLBaker`, `Framebuffer`, `Renderer`
+> (engine systems), and `Material3D`/`Filter3D`/`ILightingModel`
+> (already a composition system *inside* the render component).
+
+### Anti-patterns we avoid (Behaviour edition)
+
+1. **Behaviours self-registering on `UpdateBroadcaster`.** Tempting (reuses
+   existing code), but it decouples tick lifetime from node lifetime and loses
+   subtree gating/ordering. Behaviours are ticked by the scene walk; the
+   broadcaster is for engine systems.
+2. **A common `Component` base for behaviours *and* meshes/materials.** A render
+   component and a logic component have different contracts — don't force one
+   "Component" interface (same reasoning as `ILightingModel` not being a
+   `Filter3D`).
+3. **`GetBehaviour("Rotator")` by string.** Lookup is typed (`GetBehaviour<T>()`);
+   strings are only for serialization/factory, never for runtime access.
+4. **The camera as a special case outside the graph.** The whole point of
+   `CameraBehaviour` is to delete that special case; resist re-adding a global
+   "current camera" that isn't a node.
+5. **Putting GL/draw calls in `OnUpdate`.** Update mutates state (transforms,
+   gameplay); rendering reads it later in the render pass. Mixing them reintroduces
+   the `Device3D`-style global-state coupling we removed.
+
+---
+
 ## Relationship to `REFACTORING_PLAN.md`
 
 - **3.4 (cache `glGetUniformLocation`)** must be done **before** stage 1.

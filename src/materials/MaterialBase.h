@@ -12,7 +12,7 @@
 
 
 class Shader;
-class Mesh;
+class Pivot3D;
 
 enum CullFaceMode
 {
@@ -41,7 +41,7 @@ public:
     MaterialBase(const std::string &vertexShaderPath, const std::string &fragmentShaderPath);
 	virtual ~MaterialBase() = default;
     virtual void Build();
-	virtual void Bind(const RenderContext& ctx, const Mesh* mesh = nullptr);
+	virtual void Bind(const RenderContext& ctx, const Pivot3D* node = nullptr);
 	virtual void Unbind();
     const std::string& GetName() const { return _name; }
     void SetName(const std::string &name) { _name = name; }

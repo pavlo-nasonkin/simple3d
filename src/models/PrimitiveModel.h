@@ -8,7 +8,6 @@
 #include "render/VertexTypes.h"
 
 class ColorFilter;
-class Mesh;
 
 // База для процедурных примитивов (Sphere/Cylinder/Cone/Torus): общий материал
 // (Material3D + ColorFilter), сборка меша и шаринг геометрии через GeometryRegistry.
@@ -27,5 +26,5 @@ public:
 	~PrimitiveModel() override = default;
 	void Init() override;
 	void SetColor(unsigned int color);
-	std::shared_ptr<Mesh> ProcessMesh();
+	std::shared_ptr<Pivot3D> ProcessMesh();
 };

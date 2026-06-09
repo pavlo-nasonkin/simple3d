@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "Shader.h"
-#include "models/Mesh.h"
 #include "GLEWImporter.h"
 #include "ShaderFactory.h"
 #include <glm/gtx/hash.hpp>
@@ -100,7 +99,7 @@ GLuint MaterialBase::LinkProgram(GLuint vShader, GLuint fShader) {
     return program;
 }
 
-void MaterialBase::Bind(const RenderContext& ctx, const Mesh* /*mesh = nullptr*/)
+void MaterialBase::Bind(const RenderContext& ctx, const Pivot3D* /*node = nullptr*/)
 {
     _shader->Use();
     switch (_cullFace)

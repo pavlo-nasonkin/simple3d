@@ -6,7 +6,7 @@
 
 #include "Engine.h"
 #include "Pivot3D.h"
-#include "models/Mesh.h"
+#include "render/MeshRenderer.h"
 #include "object_selector/ObjectSelector.h"
 #include "materials/Material3D.h"
 #include "materials/filters/Filter3d.h"
@@ -34,8 +34,8 @@ void MaterialsInspectorPanel::Draw(bool* open)
     ObjectSelector* selector = Engine::GetInstance().GetObjectSelector().get();
     std::shared_ptr<Pivot3D> node = selector ? selector->GetSelectedObject() : nullptr;
 
-    Mesh* mesh = dynamic_cast<Mesh*>(node.get());
-    Material3D* material = mesh ? dynamic_cast<Material3D*>(mesh->GetMaterial().get()) : nullptr;
+    MeshRenderer* renderer = node ? node->GetRenderer() : nullptr;
+    Material3D* material = renderer ? dynamic_cast<Material3D*>(renderer->GetMaterial().get()) : nullptr;
 
     if (!material) {
         ImGui::TextDisabled("Выбери меш с материалом");

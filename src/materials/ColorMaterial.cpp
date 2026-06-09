@@ -8,9 +8,9 @@ ColorMaterial::ColorMaterial(const std::string &vertexShaderPath, const std::str
 {
 }
 
-void ColorMaterial::Bind(const RenderContext& ctx, const Mesh* mesh/*=nullptr*/)
+void ColorMaterial::Bind(const RenderContext& ctx, const Pivot3D* node/*=nullptr*/)
 {
-	MaterialBase::Bind(ctx, mesh);
+	MaterialBase::Bind(ctx, node);
 
 	GLint colorLoc = _uniformCache.GetUniformLocation("uColor");
 	unsigned char pixel[4];

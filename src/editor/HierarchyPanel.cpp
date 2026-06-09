@@ -23,8 +23,25 @@ namespace {
         const bool open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(node->GetId())),
                                             flags, "%s", name.c_str());
 
-        if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-            selector->SetSelectedObject(node);
+        // Выбор — по релизу клика без перетаскивания (а не по нажатию): иначе старт
+        // drag мгновенно переключал бы выбранный узел и инспектор уходил бы с поля,
+        // в которое тащим. GetMouseDragDelta возвращает (0,0), пока курсор не ушёл за
+        // порог перетаскивания — так отличаем клик от drag (публичный API ImGui).
+        if (ImGui::IsItemHovered()
+            && ImGui::IsMouseReleased(ImGuiMouseButton_Left)
+            && !ImGui::IsItemToggledOpen()) {
+            const ImVec2 drag = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+            if (drag.x * drag.x + drag.y * drag.y < 25.0f) { // < ~5px → это клик, не drag
+                selector->SetSelectedObject(node);
+            }
+        }
+
+        // Источник drag-n-drop: тащим id узла (для полей NodeRef/BehRef в инспекторе).
+        if (ImGui::BeginDragDropSource()) {
+            const unsigned int id = node->GetId();
+            ImGui::SetDragDropPayload("NODE_ID", &id, sizeof(id));
+            ImGui::TextUnformatted(name.c_str());
+            ImGui::EndDragDropSource();
         }
 
         if (open) {

@@ -10,6 +10,8 @@
 #include "render/VertexLayoutPresets.h"
 #include "render/Geometry.h"
 #include "render/GeometryRegistry.h"
+#include "render/MeshRenderer.h"
+#include "utils/AssetPaths.h"
 
 BoxModel::BoxModel()
 {
@@ -20,10 +22,10 @@ void BoxModel::Init()
     AddChild(ProcessMesh());
 }
 
-std::shared_ptr<Mesh> BoxModel::ProcessMesh()
+std::shared_ptr<Pivot3D> BoxModel::ProcessMesh()
 {
-	auto mat = std::make_shared<Material3D>("../assets/shaders/shader.vsh",
-														  "../assets/shaders/defaultColorLight.fsh");
+	auto mat = std::make_shared<Material3D>(AssetPaths::Resolve("shaders/shader.vsh"),
+														  AssetPaths::Resolve("shaders/defaultColorLight.fsh"));
 	// mat->SetLightingModel(std::make_unique<UnlitLightingModel>());
 	_colorFilter = std::make_shared<ColorFilter>();
 	_colorFilter->SetColor(_color);
@@ -33,9 +35,9 @@ std::shared_ptr<Mesh> BoxModel::ProcessMesh()
     auto geometry = Engine::GetInstance().GetGeometryRegistry().GetOrCreate(
         "primitive:box",
         [] { return Geometry(VertexLayouts::Standard(), boxVertices, boxIndices); });
-    auto mesh = std::make_shared<Mesh>(geometry, mat);
-    mesh->SetName(std::string("Box") + std::to_string(mesh->GetId()));
-    return mesh;
+    auto node = MeshRenderer::MakeNode(geometry, mat);
+    node->SetName(std::string("Box") + std::to_string(node->GetId()));
+    return node;
 }
 
 void BoxModel::SetColor(unsigned int color) {

@@ -4,7 +4,7 @@
 
 #include "GLEWImporter.h"
 #include "Shader.h"
-#include "models/Mesh.h"
+#include "Pivot3D.h"
 #include "resources/Texture2D.h"
 #include <glm/gtc/type_ptr.hpp>
 #include "Scene3D.h"
@@ -139,9 +139,9 @@ void Material3D::InjectFilters(std::string &fragmentShaderSource) const {
 	}
 }
 
-void Material3D::Bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
+void Material3D::Bind(const RenderContext& ctx, const Pivot3D* node/* = nullptr*/)
 {
-	MaterialBase::Bind(ctx, mesh);
+	MaterialBase::Bind(ctx, node);
 
 	auto program = _shader->GetProgram();
 	GLuint nextUnit = 0;
@@ -153,8 +153,8 @@ void Material3D::Bind(const RenderContext& ctx, const Mesh* mesh/* = nullptr*/)
 
 	if (_lighting) {
 		RenderContext lightingCtx = ctx;
-		if (mesh) {
-			lightingCtx.receiveShadows = mesh->GetReceiveShadows();
+		if (node) {
+			lightingCtx.receiveShadows = node->GetReceiveShadows();
 		}
 		_lighting->Bind(nextUnit, lightingCtx);
 		nextUnit += _lighting->GetTextureUnitCount();

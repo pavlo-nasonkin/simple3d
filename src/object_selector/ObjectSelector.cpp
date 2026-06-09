@@ -13,6 +13,8 @@
 #include "Engine.h"
 #include "camera/Camera.h"
 #include "render/Framebuffer.h"
+#include "render/Renderer.h"
+#include "utils/AssetPaths.h"
 
 
 ObjectSelector::ObjectSelector(const std::shared_ptr<Scene3D> &scene, const std::shared_ptr<Camera>& camera)
@@ -20,7 +22,7 @@ ObjectSelector::ObjectSelector(const std::shared_ptr<Scene3D> &scene, const std:
 {
 	Engine::GetInstance().GetMouseInput()->AddListener(this, MouseInput::MOUSE_BUTTON);
 
-    _colorMaterial = std::make_shared<ObjectIdMaterial>("../assets/shaders/shader.vsh", "../assets/shaders/color.fsh");
+    _colorMaterial = std::make_shared<ObjectIdMaterial>(AssetPaths::Resolve("shaders/shader.vsh"), AssetPaths::Resolve("shaders/color.fsh"));
 	_colorMaterial->Build();
 }
 
@@ -73,7 +75,7 @@ void ObjectSelector::PickAt(int x, int y, int width, int height)
 	ctx.view = camera->GetViewMatrix();
 	ctx.projection = camera->getProjectionMatrix();
 	ctx.scene3D = scene3D.get();
-	scene3D->Render(ctx, _colorMaterial.get());
+	Renderer::RenderScene(*scene3D, ctx, _colorMaterial.get());
 
 	// ImGui-координаты: origin сверху-слева; glReadPixels — снизу-слева.
 	unsigned char pixel[3] = {0, 0, 0};

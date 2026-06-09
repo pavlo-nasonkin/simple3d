@@ -17,7 +17,19 @@ TextureManager::~TextureManager()
 
 std::shared_ptr<Texture2D> TextureManager::getTexture(std::string_view texturePath, std::string_view typeName, std::string_view directory)
 {
-    auto mapIterator = _textures.find(texturePath);
+	// Кэш-ключ — полный путь (каталог + имя файла), иначе одинаковые имена файлов
+	// в разных каталогах (напр. "Color.png") коллизятся и второй ассет получает
+	// чужую текстуру. Поля path/directory остаются раздельными для сериализации.
+	std::string cacheKey;
+	if (directory.empty()) {
+		cacheKey.assign(texturePath);
+	} else {
+		cacheKey.reserve(directory.size() + 1 + texturePath.size());
+		cacheKey.append(directory).push_back('/');
+		cacheKey.append(texturePath);
+	}
+
+    auto mapIterator = _textures.find(cacheKey);
 	if (mapIterator != _textures.end()) {
 		return mapIterator->second;
 	}
@@ -28,7 +40,7 @@ std::shared_ptr<Texture2D> TextureManager::getTexture(std::string_view texturePa
 	texture->type = typeName;
 	texture->path = texturePath;
 	texture->directory = directory;
-	auto [inserted, _] = _textures.emplace(std::string(texturePath), std::move(texture));
+	auto [inserted, _] = _textures.emplace(std::move(cacheKey), std::move(texture));
 	return inserted->second;
 }
 
